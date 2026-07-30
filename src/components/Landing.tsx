@@ -1,9 +1,10 @@
 import { Activity, CheckCircle2 } from 'lucide-react';
 import { demoLogs } from '../analytics/demoLogs';
+import type { ModalState, View } from '../appTypes';
 
 type LandingProps = {
-  setView: (view: 'landing' | 'dashboard') => void;
-  setModal: (modal: 'upload' | 'recommendation' | 'notifications' | 'settings' | 'help' | 'auth' | 'lead' | null) => void;
+  setView: (view: View) => void;
+  setModal: (modal: ModalState) => void;
   loadDemo: (key: keyof typeof demoLogs) => void;
 };
 
