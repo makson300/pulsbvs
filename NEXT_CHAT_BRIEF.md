@@ -37,7 +37,7 @@ DAT/ZIP не считать поддержанными для реальной �
 
 Главная цель: довести «Пульс БВС» от рабочего frontend-демо до полезного продукта для контроля флота БВС и предиктивной диагностики, особенно для батарей и DJI Agras T40.
 
-Текущий следующий безопасный инкремент: Stage 3 preparation, но не implementation-first. Сначала подготовь API-контракты backend, ADR серверного стека и требования к реальным обезличенным журналам DJI Agras T40. Не начинай декодирование DAT/ZIP и не подключай BATTERY_DEVICE_ERROR к warning-строкам без подтверждённой схемы журнала.
+Текущий следующий безопасный инкремент: получить разрешённые обезличенные реальные журналы DJI Agras T40 по `docs/DJI_AGRAS_T40_ANONYMIZED_LOG_REQUIREMENTS.md`, подтвердить схему источника и только затем планировать адаптер. API-контракты backend и ADR уже подготовлены в `docs/`. Не начинай backend-код, декодирование DAT/ZIP или подключение `BATTERY_DEVICE_ERROR` к warning-строкам без подтверждённой схемы журнала.
 ```
 
 ## 2. Текущее состояние проекта
@@ -164,7 +164,7 @@ Memory-pass сам должен проверяться как docs-only change �
 
 Реализованы доменные типы `DroneAsset`, `BatteryAsset`, `SavedTelemetryImport`, localStorage-хранилище `puls-bvs-fleet-state`, выбор дрона и батареи при импорте, добавление демо-дронов/батарей, история поддерживаемых импортов, открытие сохранённого анализа после перезагрузки, sidebar footer fix и структурный refactor `App.tsx`.
 
-Ограничения этапа: это локальный frontend-контур без backend/БД; DAT/ZIP не создают полноценную запись истории, пока нет подтверждённого декодера; API-контракты и ADR backend остаются подготовительным шагом перед production-контуром.
+Ограничения этапа: это локальный frontend-контур без backend/БД; DAT/ZIP не создают полноценную запись истории, пока нет подтверждённого декодера. Подготовительные [API-контракты](docs/BACKEND_API_CONTRACT_V1.md), [ADR](docs/adr/0001-node-postgresql-backend.md) и [требования к T40-журналам](docs/DJI_AGRAS_T40_ANONYMIZED_LOG_REQUIREMENTS.md) готовы, но production-контур и адаптер отсутствуют.
 
 ### Этап 3. Достоверный адаптер DJI Agras T40
 
@@ -295,42 +295,15 @@ C:/Users/Mvoro/AppData/Roaming/Code/User/globalStorage/kristianshin.harvi-code/s
 
 Начать с перехода от локального демо-контура к достоверному пилоту T40, но не писать backend наугад.
 
-**Минимальный полезный инкремент: API contracts + backend ADR + требования к реальным T40 логам.**
+**Минимальный полезный инкремент завершён документально: API contracts + backend ADR + требования к реальным T40 логам.**
 
 Рекомендуемый порядок:
 
-1. Загрузить/использовать skill `puls-bvs-backend-contract-designer` и при необходимости `puls-bvs-adapter-designer`/`puls-bvs-product-analyst`.
-2. Описать API-контракты будущего backend для:
-   - `organization`;
-   - `user`;
-   - `drone`;
-   - `battery`;
-   - `telemetry_import`;
-   - `flight`;
-   - `risk_alert`;
-   - `maintenance_task`.
-3. Основываться на текущей localStorage-модели:
-   - `DroneAsset`;
-   - `BatteryAsset`;
-   - `SavedTelemetryImport`;
-   - `FleetState`;
-   - `createSavedImport`/`upsertImport`.
-4. Подготовить короткий ADR по backend-стеку:
-   - единый Node backend, без преждевременных микросервисов;
-   - PostgreSQL;
-   - ORM/миграции;
-   - хранение оригиналов логов;
-   - on-prem требования;
-   - аудит и политика хранения.
-5. Сформулировать требования к реальным обезличенным журналам DJI Agras T40:
-   - происхождение файла;
-   - версия ПО/пульта/дрона при наличии;
-   - единицы измерения;
-   - доступные поля;
-   - серийные номера/идентификаторы должны быть обезличены;
-   - допустимые фикстуры для тестов.
-6. Не подключать DAT/ZIP-декодер и `BATTERY_DEVICE_ERROR` по warning-строкам до подтверждённой схемы реального журнала.
-7. После документов/кода выполнить релевантные проверки:
+1. Получить разрешённые обезличенные реальные журналы DJI Agras T40 по [чек-листу](docs/DJI_AGRAS_T40_ANONYMIZED_LOG_REQUIREMENTS.md).
+2. Подтвердить происхождение, версии ПО, реальные имена полей, единицы и ограничения каждого источника.
+3. Использовать [API-контракт](docs/BACKEND_API_CONTRACT_V1.md) и [ADR](docs/adr/0001-node-postgresql-backend.md) как границы будущей реализации, а `DroneAsset`, `BatteryAsset`, `SavedTelemetryImport`, `FleetState`, `createSavedImport`/`upsertImport` — только как прототип localStorage.
+4. Не подключать backend-код, DAT/ZIP-декодер и `BATTERY_DEVICE_ERROR` по warning-строкам до подтверждённой схемы реального журнала.
+5. После документов/кода выполнить релевантные проверки:
 
    ```bash
    npm test
@@ -340,11 +313,11 @@ C:/Users/Mvoro/AppData/Roaming/Code/User/globalStorage/kristianshin.harvi-code/s
    git status --short --branch
    ```
 
-8. Проверить diff, сделать commit и push.
+6. Проверить diff, сделать commit и push.
 
 ## 10. Если новый чат начинается после этого memory-pass
 
 1. Проверить, что последний commit/push с сообщением вроде `Update handoff memory for next chat` присутствует в `git log --oneline -5`.
 2. Если commit есть — не переписывать memory docs снова без причины.
 3. Если commit отсутствует — сначала завершить memory-pass: проверить docs diff, `git diff --check`, commit и push.
-4. После этого лучше начать Stage 3 preparation в новом отдельном цикле, чтобы не потерять контекст.
+4. После этого продолжить с исследования разрешённых реальных T40-журналов в новом отдельном цикле, чтобы не потерять контекст.
