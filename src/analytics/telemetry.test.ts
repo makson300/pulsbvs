@@ -77,19 +77,19 @@ not-a-date,not-a-lat,37.61,unknown,voltage-hot,NaN,bad,cell`);
     expect(analysis.quality.score).toBe(0);
   });
 
-  it('accepts DAT without running fake analytics before decoder exists', () => {
+  it('accepts DAT without running fake analytics before format support exists', () => {
     const parsed = parseTelemetryFile('flight.dat', 'binary-ish-content');
     const analysis = analyzeTelemetry(parsed);
 
     expect(parsed.sourceKind).toBe('unsupported');
     expect(parsed.rows).toHaveLength(0);
-    expect(parsed.notice).toContain('декодер для этого формата ещё не подключён');
-    expect(analysis.importProfile.title).toBe('Декодер ещё не подключён');
+    expect(parsed.notice).toContain('автоматический разбор этого формата ещё не подключён');
+    expect(analysis.importProfile.title).toBe('Формат ждёт проверки');
     expect(analysis.importProfile.capability).toBe('route_only');
     expect(analysis.summary.points).toBe(0);
   });
 
-  it('accepts ZIP without running fake analytics before decoder exists', () => {
+  it('accepts ZIP without running fake analytics before format support exists', () => {
     const parsed = parseTelemetryFile('logs.zip', 'compressed-placeholder');
     const analysis = analyzeTelemetry(parsed);
 

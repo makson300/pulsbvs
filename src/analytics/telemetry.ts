@@ -131,7 +131,7 @@ export function parseTelemetryFile(sourceName: string, content: string): ParsedT
       rows: [],
       detectedColumns: [],
       missingCoreFields: ['timestamp', 'batteryPercent', 'coordinates'],
-      notice: 'Файл принят, но декодер для этого формата ещё не подключён. Аналитика по нему не выполняется, чтобы не показывать неподтверждённые выводы.',
+      notice: 'Файл принят, но автоматический разбор этого формата ещё не подключён. Аналитика по нему не выполняется, чтобы не показывать неподтверждённые выводы.',
     };
   }
   if (lowerName.endsWith('.kml') || content.trimStart().startsWith('<?xml') || content.includes('<kml')) {
@@ -229,7 +229,7 @@ function buildImportProfile(parsed: ParsedTelemetry, quality: DataQualityReport)
     nextBestFile: 'Для серьёзной диагностики нужен подтверждённый экспорт с напряжениями ячеек, температурой, ошибками батареи и нагрузкой.',
   };
   return {
-    title: parsed.sourceKind === 'kml' ? 'Маршрут KML / SmartFarm' : parsed.sourceKind === 'unsupported' ? 'Декодер ещё не подключён' : 'Ограниченный источник',
+    title: parsed.sourceKind === 'kml' ? 'Маршрут KML / SmartFarm' : parsed.sourceKind === 'unsupported' ? 'Формат ждёт проверки' : 'Ограниченный источник',
     capability: 'route_only',
     verdict: parsed.notice ?? 'Можно проверить маршрут и наличие координат, но нельзя честно оценить состояние батареи.',
     nextBestFile: 'Загрузите CSV/TXT с батарейными полями или расширенный лог с пульта/обслуживания: voltage, battery_percent, temperature, cell1...cellN, warnings.',

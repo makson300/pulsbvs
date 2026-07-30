@@ -167,7 +167,7 @@ export function createPendingImport(analysis: FlightAnalysis, droneId: string, b
     batteryId,
     sourceKind: analysis.parsed.sourceKind,
     reason: analysis.parsed.notice ?? analysis.importProfile.verdict,
-    nextStep: 'Сохранить исходный файл в приватном хранении, обезличить при необходимости и исследовать структуру перед подключением декодера.',
+    nextStep: 'Сохранить исходный файл в приватном хранении, обезличить при необходимости и проверить структуру перед автоматическим разбором.',
   };
 }
 

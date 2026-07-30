@@ -75,7 +75,7 @@ const maintenance = [
 const pricing = [
   { name: 'Старт', price: '4 900 ₽', assets: 'до 3 дронов', logs: '60 анализов/мес', note: 'для пилотов и малых подрядчиков' },
   { name: 'Флот', price: '14 900 ₽', assets: 'до 15 дронов', logs: '400 анализов/мес', note: 'для агроподрядчиков' },
-  { name: 'Enterprise', price: 'по договору', assets: '50+ дронов', logs: 'лимиты по SLA', note: 'on-premise, API, роли, SLA' },
+  { name: 'Enterprise', price: 'по договору', assets: '50+ дронов', logs: 'лимиты по SLA', note: 'роли, интеграции и локальное размещение' },
 ];
 
 const severityText = { info: 'Информация', warning: 'Внимание', critical: 'Критично' } as const;
@@ -117,7 +117,7 @@ ID батареи или псевдоним:
 5. Приватность
 Что обезличено:
 Есть ли чувствительные координаты: да / нет
-Можно ли использовать файл для разработки адаптера: да / нет / уточнить
+Можно ли использовать файл для проверки формата: да / нет / уточнить
 
 Важно: исходный файл хранить у себя в приватной папке. В сервис загружать рабочую или обезличенную копию.`;
 
@@ -414,7 +414,7 @@ function Landing({ setView, setModal, loadDemo }: { setView: (view: View) => voi
   const landingStats = [
     ['1 окно', 'флот, батареи, импорты и задачи ТО'],
     ['до полёта', 'видны слабые места в данных и батарее'],
-    ['B2B', 'контроль доступа, приватность, on-prem контур'],
+    ['B2B', 'контроль доступа, приватность, локальное размещение'],
   ];
 
   return (
@@ -460,7 +460,7 @@ function Landing({ setView, setModal, loadDemo }: { setView: (view: View) => voi
       <section className="landing-grid">
         <LandingCard kicker="01" title="Навести порядок" items={['Единый реестр дронов и батарей', 'История импортов привязана к активам', 'Понятно, какой файл дал какие выводы']} />
         <LandingCard kicker="02" title="Снизить операционный риск" items={['Подсветка просадки, температуры и качества данных', 'Объяснение риска простым языком', 'ТО превращается в задачу, а не в заметку в чате']} />
-        <LandingCard kicker="03" title="Готовить B2B-контур" items={['Без Telegram как обязательного канала', 'Приватность журналов и коммерческой информации', 'Архитектура под backend, роли и on-prem']} />
+        <LandingCard kicker="03" title="Готовить B2B-контур" items={['Корпоративные каналы уведомлений', 'Приватность журналов и коммерческой информации', 'Готовность к ролям, интеграциям и локальному размещению']} />
       </section>
 
       <section className="workflow-section">
@@ -554,7 +554,7 @@ function PilotReadiness() {
     { status: 'done', title: 'Контур импорта готов', text: 'CSV/TXT/KML проходят через качество данных, историю и привязку к активам.' },
     { status: 'done', title: 'Очередь исследования включена', text: 'DAT/ZIP/JSON принимаются без аналитики и не становятся полноценной историей.' },
     { status: 'next', title: 'Нужен первый реальный лог', text: 'Исходный файл хранится у владельца, рабочая копия загружается вместе с source.txt.' },
-    { status: 'blocked', title: 'Адаптер ждёт схему', text: 'Модельные правила и декодеры пишем только после изучения обезличенного файла.' },
+    { status: 'blocked', title: 'Формат ждёт проверки', text: 'Модельные правила и автоматический разбор добавляются только после изучения обезличенного файла.' },
   ];
 
   return (
@@ -631,7 +631,7 @@ function FlightChart({ analysis, barValues }: { analysis: FlightAnalysis; barVal
 function FleetView({ drones, batteries, onAddDrone }: { drones: DroneAsset[]; batteries: BatteryAsset[]; onAddDrone: () => void }) {
   return (
     <>
-      <div className="section-actions"><button className="upload-button" onClick={onAddDrone}><Plane size={16} />Добавить дрон</button><span>Демо-активы сохраняются в localStorage.</span></div>
+      <div className="section-actions"><button className="upload-button" onClick={onAddDrone}><Plane size={16} />Добавить дрон</button><span>В демо новые активы сохраняются в этом браузере.</span></div>
       <section className="table-grid">
         {drones.map((drone) => (
           <Entity
@@ -715,7 +715,7 @@ function PendingImportQueue({ pendingImports, drones, batteries }: { pendingImpo
         <span className="status-pill status-pill--warning">{pendingImports.length} файлов</span>
       </div>
       {pendingImports.length === 0 ? (
-        <p className="empty-state">DAT/ZIP/JSON и другие неподдержанные источники будут фиксироваться здесь: файл принят, но выводы по нему не строятся до подтверждённого декодера.</p>
+        <p className="empty-state">DAT/ZIP/JSON и другие неподдержанные источники будут фиксироваться здесь: файл принят, но выводы по нему не строятся до проверки формата.</p>
       ) : pendingImports.map((item) => {
         const drone = drones.find((entry) => entry.id === item.droneId);
         const battery = batteries.find((entry) => entry.id === item.batteryId);
@@ -870,9 +870,9 @@ function Modal({ modal, setModal, fileInput, chooseFile, uploadedName, primaryAl
         <button className="close-button" onClick={() => setModal(null)} aria-label="Закрыть">×</button>
         {modal === 'upload' && <UploadModal fileInput={fileInput} chooseFile={chooseFile} uploadedName={uploadedName} loadDemo={loadDemo} fleetState={fleetState} selectAssets={selectAssets} />}
         {modal === 'auth' && <AuthModal user={user} setUser={setUser} loginDemo={loginDemo} />}
-        {modal === 'lead' && <IconTitle icon={<Bell />} title="Заявка принята в демо-режиме" eyebrow="Пилот" text="В production здесь будет форма заявки и CRM/email-уведомление." />}
+        {modal === 'lead' && <IconTitle icon={<Bell />} title="Заявка принята в демо-режиме" eyebrow="Пилот" text="В рабочей версии здесь будет форма заявки и уведомление ответственному специалисту." />}
         {modal === 'recommendation' && <IconTitle icon={<AlertTriangle />} title={primaryAlert?.title ?? 'Отклонений нет'} eyebrow="Рекомендация" text={primaryAlert?.recommendation ?? 'Продолжайте копить историю полётов и батарей.'} />}
-        {modal === 'notifications' && <IconTitle icon={<Bell />} title="Уведомления" eyebrow="Пульс БВС" text="Здесь появятся push/email-алерты. Telegram не используем." />}
+        {modal === 'notifications' && <IconTitle icon={<Bell />} title="Уведомления" eyebrow="Пульс БВС" text="Здесь появятся email, push и корпоративные webhook-уведомления по критичным событиям." />}
         {modal === 'settings' && <IconTitle icon={<Settings />} title="Настройки" eyebrow="Пульс БВС" text="Следующий этап: роли, пороги алертов, организация и лимиты анализов по тарифу." />}
         {modal === 'help' && <HelpModal />}
       </section>
@@ -910,7 +910,7 @@ function HelpModal() {
       </div>
       <div className="help-warning">
         <AlertTriangle size={16} />
-        <span>Адаптер, декодер и модельные пороги добавляются только после изучения реального обезличенного файла с заполненным source.txt.</span>
+        <span>Автоматический разбор формата и модельные пороги добавляются только после изучения реального обезличенного файла с заполненным source.txt.</span>
       </div>
     </>
   );
@@ -920,18 +920,18 @@ function UploadModal({ fileInput, chooseFile, uploadedName, loadDemo, fleetState
   const intakeChecklist = [
     'Сначала выберите дрон и батарею, даже если батарея пока неизвестна.',
     'FlightRecord с телефона/пульта полезен для маршрута, времени и первичных событий.',
-    'DAT/ZIP/JSON фиксируются в очереди исследования и не превращаются в диагностику без декодера.',
+    'DAT/ZIP/JSON фиксируются в очереди исследования и не превращаются в диагностику без проверки формата.',
     'Исходный файл храните у себя; сюда загружайте рабочую или обезличенную копию.',
   ];
   const sourceGuide = [
     { source: 'DJI Fly / телефон / пульт', gives: 'маршрут, время, высота/скорость и часть предупреждений, если они есть в FlightRecord', limit: 'обычно не хватает полной батарейной телеметрии, ячеек и сервисных событий' },
-    { source: 'DJI Assistant 2', gives: 'технический экспорт Flight Controller Data и более полный контекст состояния устройства', limit: 'формат всё равно проверяем на реальном образце; DAT/ZIP/JSON не декодируем наугад' },
+    { source: 'DJI Assistant 2', gives: 'технический экспорт Flight Controller Data и более полный контекст состояния устройства', limit: 'формат всё равно проверяем на реальном образце; DAT/ZIP/JSON не разбираем наугад' },
     { source: 'KML из SmartFarm/агроплатформы', gives: 'маршрут, геометрию задания и координаты облёта', limit: 'не показывает состояние батареи, ошибки аппарата и обслуживание' },
   ];
 
   return (
     <>
-      <IconTitle icon={<CloudUpload />} title="Загрузите журнал полёта" eyebrow="Импорт телеметрии" text="Выбор актива только связывает файл с реестром: модельная диагностика ещё не подключена. CSV/TXT/KML сохраняются в историю. DAT/ZIP/JSON принимаются, но до подключения декодера не анализируются и не становятся полноценной записью." />
+      <IconTitle icon={<CloudUpload />} title="Загрузите журнал полёта" eyebrow="Импорт телеметрии" text="Выбор актива только связывает файл с реестром: модельная диагностика ещё не подключена. CSV/TXT/KML сохраняются в историю. DAT/ZIP/JSON принимаются, но до проверки формата не анализируются и не становятся полноценной записью." />
       <div className="source-guide">
         <strong>Откуда брать логи и что они дают</strong>
         {sourceGuide.map((item) => (
@@ -978,7 +978,7 @@ function UploadModal({ fileInput, chooseFile, uploadedName, loadDemo, fleetState
 function AuthModal({ user, setUser, loginDemo }: Pick<ModalProps, 'user' | 'setUser' | 'loginDemo'>) {
   return (
     <>
-      <IconTitle icon={<ShieldCheck />} title="Демо-регистрация" eyebrow="Аккаунт" text="Пока это локальная сессия в браузере. Структура уже соответствует будущей организации и тарифу." />
+      <IconTitle icon={<ShieldCheck />} title="Демо-регистрация" eyebrow="Аккаунт" text="В демо данные аккаунта сохраняются только в этом браузере. Этого достаточно, чтобы проверить кабинет и сценарии импорта." />
       <input className="form-input" value={user.name} onChange={(event) => setUser({ ...user, name: event.target.value })} placeholder="Имя" />
       <input className="form-input" value={user.company} onChange={(event) => setUser({ ...user, company: event.target.value })} placeholder="Компания" />
       <input className="form-input" value={user.email} onChange={(event) => setUser({ ...user, email: event.target.value })} placeholder="Email" />
