@@ -4,7 +4,7 @@ import { demoLogs } from '../analytics/demoLogs';
 import type { FlightAnalysis } from '../analytics/telemetry';
 import { downloadSample, sampleCsv, sampleKml, sourceTemplate } from '../appData';
 import type { ModalState, UserProfile } from '../appTypes';
-import type { FleetState } from '../domain/fleet';
+import type { FileOriginNote, FleetState } from '../domain/fleet';
 
 export type ModalProps = {
   modal: Exclude<ModalState, null>;
@@ -19,14 +19,16 @@ export type ModalProps = {
   setUser: (user: UserProfile) => void;
   fleetState: FleetState;
   selectAssets: (droneId: string, batteryId: string) => void;
+  fileOriginNote: FileOriginNote;
+  setFileOriginNote: (note: FileOriginNote) => void;
 };
 
-export function Modal({ modal, setModal, fileInput, chooseFile, uploadedName, primaryAlert, loadDemo, loginDemo, user, setUser, fleetState, selectAssets }: ModalProps) {
+export function Modal({ modal, setModal, fileInput, chooseFile, uploadedName, primaryAlert, loadDemo, loginDemo, user, setUser, fleetState, selectAssets, fileOriginNote, setFileOriginNote }: ModalProps) {
   return (
     <div className="modal-backdrop" data-testid="modal-backdrop" onMouseDown={() => setModal(null)}>
       <section className="upload-modal" data-testid={`modal-${modal}`} onMouseDown={(event) => event.stopPropagation()}>
         <button className="close-button" onClick={() => setModal(null)} aria-label="Закрыть">×</button>
-        {modal === 'upload' && <UploadModal fileInput={fileInput} chooseFile={chooseFile} uploadedName={uploadedName} loadDemo={loadDemo} fleetState={fleetState} selectAssets={selectAssets} />}
+        {modal === 'upload' && <UploadModal fileInput={fileInput} chooseFile={chooseFile} uploadedName={uploadedName} loadDemo={loadDemo} fleetState={fleetState} selectAssets={selectAssets} fileOriginNote={fileOriginNote} setFileOriginNote={setFileOriginNote} />}
         {modal === 'auth' && <AuthModal user={user} setUser={setUser} loginDemo={loginDemo} />}
         {modal === 'lead' && <IconTitle icon={<Bell />} title="Заявка принята в демо-режиме" eyebrow="Пилот" text="В рабочей версии здесь будет форма заявки и уведомление ответственному специалисту." />}
         {modal === 'recommendation' && <IconTitle icon={<AlertTriangle />} title={primaryAlert?.title ?? 'Отклонений нет'} eyebrow="Рекомендация" text={primaryAlert?.recommendation ?? 'Продолжайте копить историю полётов и батарей.'} />}
@@ -74,7 +76,7 @@ function HelpModal() {
   );
 }
 
-function UploadModal({ fileInput, chooseFile, uploadedName, loadDemo, fleetState, selectAssets }: Pick<ModalProps, 'fileInput' | 'chooseFile' | 'uploadedName' | 'loadDemo' | 'fleetState' | 'selectAssets'>) {
+function UploadModal({ fileInput, chooseFile, uploadedName, loadDemo, fleetState, selectAssets, fileOriginNote, setFileOriginNote }: Pick<ModalProps, 'fileInput' | 'chooseFile' | 'uploadedName' | 'loadDemo' | 'fleetState' | 'selectAssets' | 'fileOriginNote' | 'setFileOriginNote'>) {
   const intakeChecklist = [
     'Сначала выберите дрон и батарею, даже если батарея пока неизвестна.',
     'Файл из телефона или пульта полезен для маршрута, времени и части предупреждений.',
@@ -114,6 +116,19 @@ function UploadModal({ fileInput, chooseFile, uploadedName, loadDemo, fleetState
           <select data-testid="select-battery" value={fleetState.selectedBatteryId} onChange={(event) => selectAssets(fleetState.selectedDroneId, event.target.value)}>
             {fleetState.batteries.map((battery) => <option value={battery.id} key={battery.id}>{battery.label}</option>)}
           </select>
+        </label>
+      </div>
+      <div className="origin-note-form">
+        <strong>Карточка файла</strong>
+        <p>Короткая заметка сохранится вместе с загрузкой и поможет позже проверить происхождение файла.</p>
+        <label>Откуда получен файл
+          <input className="form-input" data-testid="origin-source" value={fileOriginNote.source ?? ''} onChange={(event) => setFileOriginNote({ ...fileOriginNote, source: event.target.value })} placeholder="Например: телефон пилота, пульт, карта KML" />
+        </label>
+        <label>Дата или период полёта
+          <input className="form-input" data-testid="origin-flight-date" value={fileOriginNote.flightDate ?? ''} onChange={(event) => setFileOriginNote({ ...fileOriginNote, flightDate: event.target.value })} placeholder="Например: 30.07, утро" />
+        </label>
+        <label>Что было скрыто из чувствительных данных
+          <textarea className="form-input" data-testid="origin-hidden-data" value={fileOriginNote.hiddenData ?? ''} onChange={(event) => setFileOriginNote({ ...fileOriginNote, hiddenData: event.target.value })} placeholder="Например: точные координаты, имя пилота" />
         </label>
       </div>
       <input ref={fileInput} className="hidden-input" data-testid="file-input" type="file" onChange={(event) => chooseFile(event.target.files?.[0])} accept=".csv,.txt,.dat,.kml,.zip,.json" />

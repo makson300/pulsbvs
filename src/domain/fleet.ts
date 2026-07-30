@@ -23,6 +23,13 @@ export interface BatteryAsset {
   tone: AssetTone;
 }
 
+export interface FileOriginNote {
+  source?: string;
+  flightDate?: string;
+  scenario?: string;
+  hiddenData?: string;
+}
+
 export interface SavedTelemetryImport {
   id: string;
   sourceName: string;
@@ -36,6 +43,7 @@ export interface SavedTelemetryImport {
   alertCount: number;
   criticalAlertCount: number;
   limitation: string;
+  originNote?: FileOriginNote;
   analysis: FlightAnalysis;
 }
 
@@ -48,6 +56,7 @@ export interface PendingTelemetryImport {
   sourceKind: FlightAnalysis['parsed']['sourceKind'];
   reason: string;
   nextStep: string;
+  originNote?: FileOriginNote;
 }
 
 export interface FleetState {
@@ -137,7 +146,18 @@ export function canPersistImport(analysis: FlightAnalysis) {
   return analysis.parsed.sourceKind !== 'unsupported';
 }
 
-export function createSavedImport(analysis: FlightAnalysis, droneId: string, batteryId: string, now = new Date()): SavedTelemetryImport | null {
+function cleanOriginNote(note?: FileOriginNote): FileOriginNote | undefined {
+  if (!note) return undefined;
+  const cleaned = {
+    source: note.source?.trim(),
+    flightDate: note.flightDate?.trim(),
+    scenario: note.scenario?.trim(),
+    hiddenData: note.hiddenData?.trim(),
+  };
+  return Object.values(cleaned).some(Boolean) ? cleaned : undefined;
+}
+
+export function createSavedImport(analysis: FlightAnalysis, droneId: string, batteryId: string, now = new Date(), originNote?: FileOriginNote): SavedTelemetryImport | null {
   if (!canPersistImport(analysis)) return null;
   const criticalAlertCount = analysis.alerts.filter((alert) => alert.severity === 'critical').length;
   return {
@@ -153,11 +173,12 @@ export function createSavedImport(analysis: FlightAnalysis, droneId: string, bat
     alertCount: analysis.alerts.length,
     criticalAlertCount,
     limitation: analysis.importProfile.verdict,
+    originNote: cleanOriginNote(originNote),
     analysis,
   };
 }
 
-export function createPendingImport(analysis: FlightAnalysis, droneId: string, batteryId: string, now = new Date()): PendingTelemetryImport | null {
+export function createPendingImport(analysis: FlightAnalysis, droneId: string, batteryId: string, now = new Date(), originNote?: FileOriginNote): PendingTelemetryImport | null {
   if (canPersistImport(analysis)) return null;
   return {
     id: `pending-${now.getTime()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -168,6 +189,7 @@ export function createPendingImport(analysis: FlightAnalysis, droneId: string, b
     sourceKind: analysis.parsed.sourceKind,
     reason: analysis.parsed.notice ?? analysis.importProfile.verdict,
     nextStep: 'Сохраните исходный файл у себя в закрытой папке, уберите лишние чувствительные данные из копии и проверьте, какие данные можно прочитать.',
+    originNote: cleanOriginNote(originNote),
   };
 }
 

@@ -1,7 +1,7 @@
 import { AlertTriangle, CheckCircle2, CircleHelp } from 'lucide-react';
 import type { FlightAnalysis } from '../analytics/telemetry';
 import { capabilityText, flights } from '../appData';
-import type { BatteryAsset, DroneAsset, PendingTelemetryImport, SavedTelemetryImport } from '../domain/fleet';
+import type { BatteryAsset, DroneAsset, FileOriginNote, PendingTelemetryImport, SavedTelemetryImport } from '../domain/fleet';
 import { List, QualityPanel } from './CommonCards';
 
 export function FlightsView({ analysis, imports, pendingImports, drones, batteries, onOpenImport }: { analysis: FlightAnalysis; imports: SavedTelemetryImport[]; pendingImports: PendingTelemetryImport[]; drones: DroneAsset[]; batteries: BatteryAsset[]; onOpenImport: (item: SavedTelemetryImport) => void }) {
@@ -47,6 +47,7 @@ function PendingImportQueue({ pendingImports, drones, batteries }: { pendingImpo
             <div>
               <strong>{item.sourceName}</strong>
               <p>{drone?.name ?? 'Дрон не найден'} · {battery?.label ?? 'Батарея не найдена'} · ждёт проверки чтения данных</p>
+              <OriginNote note={item.originNote} />
               <small>{item.reason}</small>
               <small>{item.nextStep}</small>
             </div>
@@ -75,13 +76,19 @@ function ImportHistory({ imports, drones, batteries, onOpenImport }: { imports: 
             <span className={`row-status row-status--${item.criticalAlertCount ? 'critical' : item.alertCount ? 'warning' : 'good'}`}>
               {item.criticalAlertCount ? <AlertTriangle size={17} /> : <CheckCircle2 size={17} />}
             </span>
-            <div><strong>{item.sourceName}</strong><p>{drone?.name ?? 'Дрон не найден'} · {battery?.label ?? 'Батарея не найдена'} · {capabilityText[item.capability]}</p></div>
+            <div><strong>{item.sourceName}</strong><p>{drone?.name ?? 'Дрон не найден'} · {battery?.label ?? 'Батарея не найдена'} · {capabilityText[item.capability]}</p><OriginNote note={item.originNote} /></div>
             <time>{new Date(item.importedAt).toLocaleString('ru-RU')} · качество {item.qualityScore}%</time>
           </button>
         );
       })}
     </section>
   );
+}
+
+function OriginNote({ note }: { note?: FileOriginNote }) {
+  if (!note) return null;
+  const parts = [note.source && `Источник: ${note.source}`, note.flightDate && `Полёт: ${note.flightDate}`, note.hiddenData && `Скрыто: ${note.hiddenData}`].filter(Boolean);
+  return parts.length ? <small className="origin-note">{parts.join(' · ')}</small> : null;
 }
 
 function ImportProfile({ analysis }: { analysis: FlightAnalysis }) {

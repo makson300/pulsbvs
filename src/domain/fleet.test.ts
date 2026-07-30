@@ -44,6 +44,18 @@ describe('fleet domain state', () => {
     expect(restored.imports[0].analysis.summary.points).toBe(2);
   });
 
+  it('stores file origin notes with supported telemetry imports', () => {
+    const state = createDefaultFleetState();
+    const analysis = analyzeTelemetry(parseTelemetryCsv('flight.csv', 'timestamp,battery_percent\n2026-07-30T09:00:00Z,90'));
+    const saved = createSavedImport(analysis, state.selectedDroneId, state.selectedBatteryId, new Date('2026-07-30T09:10:00Z'), {
+      source: 'телефон пилота',
+      flightDate: '30.07 утро',
+      hiddenData: 'точные координаты',
+    });
+
+    expect(saved?.originNote).toEqual({ source: 'телефон пилота', flightDate: '30.07 утро', hiddenData: 'точные координаты', scenario: undefined });
+  });
+
   it('does not create full history entries for unsupported DAT or ZIP imports', () => {
     const state = createDefaultFleetState();
     const analysis = analyzeTelemetry(parseTelemetryFile('raw.zip', 'binary'));
@@ -66,5 +78,13 @@ describe('fleet domain state', () => {
     expect(restored.pendingImports).toHaveLength(1);
     expect(restored.pendingImports[0].sourceName).toBe('raw.zip');
     expect(restored.pendingImports[0].reason).toContain('этот тип файла пока не читается');
+  });
+
+  it('stores file origin notes with unsupported files in the research queue', () => {
+    const state = createDefaultFleetState();
+    const analysis = analyzeTelemetry(parseTelemetryFile('raw.zip', 'binary'));
+    const pending = createPendingImport(analysis, state.selectedDroneId, state.selectedBatteryId, new Date('2026-07-30T10:00:00Z'), { source: 'пульт', hiddenData: 'имя пилота' });
+
+    expect(pending?.originNote).toEqual({ source: 'пульт', flightDate: undefined, scenario: undefined, hiddenData: 'имя пилота' });
   });
 });

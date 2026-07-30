@@ -104,6 +104,12 @@ button { border: 0; font: inherit; cursor: pointer; }
 .pending-note { display: flex; gap: 9px; align-items: flex-start; padding: 12px; margin: 12px 0; color: #ffc66d; border: 1px solid #74541f; border-radius: 13px; background: #3f3317; font-size: 11px; line-height: 1.5; }
 .pending-row { cursor: default; }
 .pending-row small { display: block; color: #ffc66d; font-size: 10px; line-height: 1.45; margin-top: 6px; }
+.origin-note { color: #8fb2d7 !important; }
+.origin-note-form { display: grid; gap: 10px; padding: 13px; margin: 12px 0; border: 1px solid #24486d; border-radius: 14px; background: #081d38; }
+.origin-note-form strong { color: #eff7ff; font-size: 12px; }
+.origin-note-form p { color: #91abc8; font-size: 11px; line-height: 1.55; margin: 0; }
+.origin-note-form label { color: #b9cde5; font-size: 11px; font-weight: 800; }
+.origin-note-form textarea { min-height: 76px; resize: vertical; }
 .pilot-readiness { margin-top: 15px; }
 .first-file-card { margin-top: 15px; border-color: #28527c; background: linear-gradient(180deg, rgba(13, 37, 71, .88), rgba(8, 24, 47, .94)); }
 .first-file-card > p { color: #9eb6d2; font-size: 12px; line-height: 1.65; margin: 10px 0 0; max-width: 760px; }

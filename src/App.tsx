@@ -19,6 +19,7 @@ import {
   upsertImport,
   upsertPendingImport,
   type FleetState,
+  type FileOriginNote,
   type SavedTelemetryImport,
 } from './domain/fleet';
 
@@ -44,6 +45,7 @@ function App() {
   const [modal, setModal] = useState<ModalState>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [uploadedName, setUploadedName] = useState<string | null>(null);
+  const [fileOriginNote, setFileOriginNote] = useState<FileOriginNote>({});
   const [fleetState, setFleetState] = useState<FleetState>(() => loadFleetState());
   const [analysis, setAnalysis] = useState<FlightAnalysis>(() =>
     fleetState.imports[0]?.analysis ?? analyzeTelemetry(parseTelemetryCsv(demoLogs.degraded.label, demoLogs.degraded.content)),
@@ -69,24 +71,25 @@ function App() {
     setFleetState((state) => ({ ...state, selectedDroneId: droneId, selectedBatteryId: batteryId }));
   }
 
-  function persistAnalysis(nextAnalysis: FlightAnalysis, sourceName: string, targetSection: Section) {
+  function persistAnalysis(nextAnalysis: FlightAnalysis, sourceName: string, targetSection: Section, originNote?: FileOriginNote) {
     setUploadedName(sourceName);
     setAnalysis(nextAnalysis);
     setFleetState((state) => {
-      const saved = createSavedImport(nextAnalysis, state.selectedDroneId, state.selectedBatteryId);
-      const pending = createPendingImport(nextAnalysis, state.selectedDroneId, state.selectedBatteryId);
+      const saved = createSavedImport(nextAnalysis, state.selectedDroneId, state.selectedBatteryId, new Date(), originNote);
+      const pending = createPendingImport(nextAnalysis, state.selectedDroneId, state.selectedBatteryId, new Date(), originNote);
       if (pending) return upsertPendingImport(state, pending);
       return saved ? upsertImport(state, saved) : state;
     });
     setSection(targetSection);
     setView('dashboard');
     setModal(null);
+    if (originNote) setFileOriginNote({});
   }
 
   async function chooseFile(file?: File) {
     if (!file) return;
     const content = await file.text();
-    persistAnalysis(analyzeTelemetry(parseTelemetryFile(file.name, content)), file.name, 'flights');
+    persistAnalysis(analyzeTelemetry(parseTelemetryFile(file.name, content)), file.name, 'flights', fileOriginNote);
   }
 
   function loadDemo(key: keyof typeof demoLogs) {
@@ -134,6 +137,8 @@ function App() {
     setUser,
     fleetState,
     selectAssets,
+    fileOriginNote,
+    setFileOriginNote,
   };
 
   if (view === 'landing') {
