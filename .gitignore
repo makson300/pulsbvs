@@ -21,5 +21,7 @@ Thumbs.db
 .vscode/
 
 # Harvi local/protected workspace state
-.harvi/
+.harvi/*
+!.harvi/skills/
+!.harvi/skills/**
 .harvimodes
