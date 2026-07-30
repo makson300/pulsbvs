@@ -35,8 +35,10 @@ nav { display: grid; gap: 4px; }.nav-item { color: #90a8c7; display: flex; align
 .demo-actions button { color: #eaf3ff; background: #123761; border: 1px solid #24527d; border-radius: 9px; padding: 10px 8px; font-weight: 800; font-size: 11px; }
 .demo-actions button:nth-child(2) { background: #3f3317; border-color: #8a6520; }
 .demo-actions button:nth-child(3) { background: #451d2b; border-color: #8b3349; }
+.sample-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.sample-actions button { color: #9dccff; background: #0c2548; border: 1px solid #24527d; border-radius: 9px; padding: 10px 8px; font-weight: 800; font-size: 11px; }
 @media (max-width: 1180px) { .analysis-grid { grid-template-columns: 1fr; } }
-@media (max-width: 760px) { .quality-columns, .demo-actions { grid-template-columns: 1fr; } }
+@media (max-width: 760px) { .quality-columns, .demo-actions, .sample-actions { grid-template-columns: 1fr; } }
 
 .table-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px; }
 .entity-card { display: grid; gap: 18px; }
