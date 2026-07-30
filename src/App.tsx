@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { demoLogs } from './analytics/demoLogs';
-import { analyzeTelemetry, parseTelemetryCsv, parseTelemetryFile, type FlightAnalysis } from './analytics/telemetry';
+import { analyzeTelemetry, isUnsupportedTelemetryFile, parseTelemetryCsv, parseTelemetryFile, type FlightAnalysis } from './analytics/telemetry';
 import { navItems } from './appData';
 import type { ModalState, Section, UserProfile, View } from './appTypes';
 import { BatteriesView, FleetView, MaintenanceView } from './components/FleetSections';
@@ -30,21 +30,40 @@ const defaultUser: UserProfile = {
   plan: 'Флот',
 };
 
+const MAX_CLIENT_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+
+function readLocalItem(key: string) {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeLocalItem(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // The demo remains usable when browser storage is unavailable.
+  }
+}
+
 function loadUserProfile(): UserProfile {
   try {
-    return { ...defaultUser, ...JSON.parse(localStorage.getItem('puls-bvs-user') || '{}') };
+    return { ...defaultUser, ...JSON.parse(readLocalItem('puls-bvs-user') || '{}') };
   } catch {
     return defaultUser;
   }
 }
 
 function App() {
-  const [view, setView] = useState<View>(() => (localStorage.getItem('puls-bvs-user') ? 'dashboard' : 'landing'));
+  const [view, setView] = useState<View>(() => (readLocalItem('puls-bvs-user') ? 'dashboard' : 'landing'));
   const [user, setUser] = useState<UserProfile>(() => loadUserProfile());
   const [section, setSection] = useState<Section>('overview');
   const [modal, setModal] = useState<ModalState>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [uploadedName, setUploadedName] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [fileOriginNote, setFileOriginNote] = useState<FileOriginNote>({});
   const [fleetState, setFleetState] = useState<FleetState>(() => loadFleetState());
   const [analysis, setAnalysis] = useState<FlightAnalysis>(() =>
@@ -58,10 +77,12 @@ function App() {
     [analysis],
   );
 
-  useEffect(() => saveFleetState(fleetState), [fleetState]);
+  useEffect(() => {
+    saveFleetState(fleetState);
+  }, [fleetState]);
 
   const loginDemo = (profile = user) => {
-    localStorage.setItem('puls-bvs-user', JSON.stringify(profile));
+    writeLocalItem('puls-bvs-user', JSON.stringify(profile));
     setUser(profile);
     setView('dashboard');
     setModal(null);
@@ -88,8 +109,17 @@ function App() {
 
   async function chooseFile(file?: File) {
     if (!file) return;
-    const content = await file.text();
-    persistAnalysis(analyzeTelemetry(parseTelemetryFile(file.name, content)), file.name, 'flights', fileOriginNote);
+    setUploadError(null);
+    if (file.size > MAX_CLIENT_FILE_SIZE_BYTES) {
+      setUploadError('Файл больше 10 МБ. Для этой демо-версии подготовьте уменьшенную рабочую копию без лишних данных.');
+      return;
+    }
+    try {
+      const content = isUnsupportedTelemetryFile(file.name) ? '' : await file.text();
+      persistAnalysis(analyzeTelemetry(parseTelemetryFile(file.name, content)), file.name, 'flights', fileOriginNote);
+    } catch {
+      setUploadError('Не удалось прочитать файл в браузере. Проверьте, что файл доступен, и попробуйте загрузить его снова.');
+    }
   }
 
   function loadDemo(key: keyof typeof demoLogs) {
@@ -130,6 +160,7 @@ function App() {
     fileInput,
     chooseFile,
     uploadedName,
+    uploadError,
     primaryAlert,
     loadDemo,
     loginDemo,

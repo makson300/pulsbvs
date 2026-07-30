@@ -4,6 +4,7 @@ export interface BatterySnapshot {
   capability: TelemetryCapability;
   batteryPercent: number;
   packVoltage?: number;
+  undervoltageThresholdV?: number;
   cellVoltages?: number[];
   batteryTemperatureC?: number;
   dischargeRatePercentPerMinute?: number;
@@ -101,11 +102,11 @@ export function assessBattery(snapshot: BatterySnapshot): BatteryAssessment {
       recommendation: 'Снизьте нагрузку и проконтролируйте температуру на следующем вылете.',
     });
   }
-  if ((snapshot.packVoltage ?? Infinity) < 47.6) {
+  if (snapshot.packVoltage !== undefined && snapshot.undervoltageThresholdV !== undefined && snapshot.packVoltage < snapshot.undervoltageThresholdV) {
     score -= 35;
     alerts.push({
       code: 'BATTERY_UNDERVOLTAGE', severity: 'critical', title: 'Критически низкое напряжение',
-      detail: `Напряжение батареи ${snapshot.packVoltage?.toFixed(1)} В ниже осторожного порога первичной проверки.`,
+      detail: `Напряжение батареи ${snapshot.packVoltage.toFixed(1)} В ниже подтверждённого порога для этого профиля.`,
       recommendation: 'Зафиксируйте событие и не используйте батарею повторно без осмотра.',
     });
   }

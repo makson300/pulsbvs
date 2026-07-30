@@ -67,6 +67,7 @@ button { border: 0; font: inherit; cursor: pointer; }
 .entity-stats span { display: flex; justify-content: space-between; gap: 16px; padding-bottom: 8px; border-bottom: 1px solid #183858; }
 .entity-stats b { color: #eff7ff; text-align: right; }
 .entity-action { display: flex; align-items: center; gap: 6px; width: fit-content; color: #95c6ff; background: transparent; padding: 0; font-size: 11px; font-weight: 800; }
+.list-status { color: #91abc8; font-size: 11px; font-weight: 800; }
 .list-panel { margin-top: 15px; }
 .list-row, .history-row { display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 12px; padding: 15px 0; border-bottom: 1px solid #193756; }
 .history-row { width: 100%; color: inherit; background: transparent; text-align: left; }
@@ -110,6 +111,8 @@ button { border: 0; font: inherit; cursor: pointer; }
 .origin-note-form p { color: #91abc8; font-size: 11px; line-height: 1.55; margin: 0; }
 .origin-note-form label { color: #b9cde5; font-size: 11px; font-weight: 800; }
 .origin-note-form textarea { min-height: 76px; resize: vertical; }
+.origin-note-local { color: #91abc8; font-size: 10px; line-height: 1.5; margin: 10px 0; }
+.upload-error { margin-top: 10px; padding: 11px 12px; color: #ffd1ce; border: 1px solid #7a3938; border-radius: 12px; background: #401d25; font-size: 11px; line-height: 1.5; }
 .pilot-readiness { margin-top: 15px; }
 .first-file-card { margin-top: 15px; border-color: #28527c; background: linear-gradient(180deg, rgba(13, 37, 71, .88), rgba(8, 24, 47, .94)); }
 .first-file-card > p { color: #9eb6d2; font-size: 12px; line-height: 1.65; margin: 10px 0 0; max-width: 760px; }

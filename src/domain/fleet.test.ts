@@ -26,6 +26,18 @@ describe('fleet domain state', () => {
     expect(state.selectedBatteryId).toBe(state.batteries[0].id);
   });
 
+  it('loads a safe default state when browser storage rejects access', () => {
+    const storage = { getItem: () => { throw new Error('storage unavailable'); } };
+
+    expect(loadFleetState(storage).imports).toEqual([]);
+  });
+
+  it('does not throw when browser storage rejects a save', () => {
+    const storage = { setItem: () => { throw new Error('storage unavailable'); } };
+
+    expect(saveFleetState(createDefaultFleetState(), storage)).toBe(false);
+  });
+
   it('persists and restores supported telemetry imports with asset links', () => {
     const state = createDefaultFleetState();
     const analysis = analyzeTelemetry(parseTelemetryCsv('flight.csv', 'timestamp,battery_percent,pack_voltage\n2026-07-30T09:00:00Z,90,51\n2026-07-30T09:04:00Z,82,49'));
@@ -50,10 +62,11 @@ describe('fleet domain state', () => {
     const saved = createSavedImport(analysis, state.selectedDroneId, state.selectedBatteryId, new Date('2026-07-30T09:10:00Z'), {
       source: 'телефон пилота',
       flightDate: '30.07 утро',
+      scenario: 'проверочный полёт',
       hiddenData: 'точные координаты',
     });
 
-    expect(saved?.originNote).toEqual({ source: 'телефон пилота', flightDate: '30.07 утро', hiddenData: 'точные координаты', scenario: undefined });
+    expect(saved?.originNote).toEqual({ source: 'телефон пилота', flightDate: '30.07 утро', scenario: 'проверочный полёт', hiddenData: 'точные координаты' });
   });
 
   it('does not create full history entries for unsupported DAT or ZIP imports', () => {
@@ -61,6 +74,14 @@ describe('fleet domain state', () => {
     const analysis = analyzeTelemetry(parseTelemetryFile('raw.zip', 'binary'));
 
     expect(createSavedImport(analysis, state.selectedDroneId, state.selectedBatteryId)).toBeNull();
+  });
+
+  it('does not create full history entries for empty supported files', () => {
+    const state = createDefaultFleetState();
+    const analysis = analyzeTelemetry(parseTelemetryCsv('empty.csv', ''));
+
+    expect(createSavedImport(analysis, state.selectedDroneId, state.selectedBatteryId)).toBeNull();
+    expect(createPendingImport(analysis, state.selectedDroneId, state.selectedBatteryId)).not.toBeNull();
   });
 
   it('keeps unsupported DAT or ZIP imports in a research queue', () => {

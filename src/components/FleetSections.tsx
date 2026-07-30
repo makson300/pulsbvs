@@ -1,4 +1,4 @@
-import { BatteryCharging, CalendarClock, Plane, Wrench } from 'lucide-react';
+import { BatteryCharging, Plane, Wrench } from 'lucide-react';
 import { maintenance } from '../appData';
 import type { BatteryAsset, DroneAsset } from '../domain/fleet';
 import { Entity, List } from './CommonCards';
@@ -55,7 +55,7 @@ export function MaintenanceView() {
   return (
     <List
       title="Задачи обслуживания"
-      action={<button className="upload-button"><CalendarClock size={16} />Создать задачу</button>}
+      action={<span className="list-status">Задачи в демо</span>}
       rows={maintenance.map((item) => ({
         icon: <Wrench size={17} />,
         tone: item.tone,

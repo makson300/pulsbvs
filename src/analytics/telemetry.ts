@@ -124,7 +124,7 @@ export function parseTelemetryCsv(sourceName: string, content: string): ParsedTe
 
 export function parseTelemetryFile(sourceName: string, content: string): ParsedTelemetry {
   const lowerName = sourceName.toLowerCase();
-  if (lowerName.endsWith('.dat') || lowerName.endsWith('.zip') || lowerName.endsWith('.json')) {
+  if (isUnsupportedTelemetryFile(sourceName)) {
     return {
       sourceName,
       sourceKind: 'unsupported',
@@ -134,10 +134,23 @@ export function parseTelemetryFile(sourceName: string, content: string): ParsedT
       notice: 'Файл принят, но этот тип файла пока не читается. Выводы по нему не строятся, чтобы не показывать неподтверждённую информацию.',
     };
   }
-  if (lowerName.endsWith('.kml') || content.trimStart().startsWith('<?xml') || content.includes('<kml')) {
+  if (lowerName.endsWith('.kml') || /<kml(?:\s|>)/i.test(content)) {
     return parseKmlRoute(sourceName, content);
   }
-  return parseTelemetryCsv(sourceName, content);
+  if (lowerName.endsWith('.csv') || lowerName.endsWith('.txt')) return parseTelemetryCsv(sourceName, content);
+  return {
+    sourceName,
+    sourceKind: 'unsupported',
+    rows: [],
+    detectedColumns: [],
+    missingCoreFields: ['timestamp', 'batteryPercent', 'coordinates'],
+    notice: 'Этот тип файла пока не принимается для проверки. Загрузите CSV, TXT, KML, DAT, ZIP или JSON.',
+  };
+}
+
+export function isUnsupportedTelemetryFile(sourceName: string) {
+  const lowerName = sourceName.toLowerCase();
+  return lowerName.endsWith('.dat') || lowerName.endsWith('.zip') || lowerName.endsWith('.json');
 }
 
 function parseKmlRoute(sourceName: string, content: string): ParsedTelemetry {

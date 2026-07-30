@@ -10,8 +10,15 @@ describe('assessBattery', () => {
     expect(result.alerts).toContainEqual(expect.objectContaining({ code: 'BATTERY_DATA_LIMITED', severity: 'info' }));
   });
 
-  it('raises a critical alert for conservative undervoltage threshold', () => {
+  it('does not infer an undervoltage threshold without a confirmed battery profile', () => {
     const result = assessBattery({ capability: 'extended', batteryPercent: 25, packVoltage: 47.3 });
+
+    expect(result.alerts).not.toContainEqual(expect.objectContaining({ code: 'BATTERY_UNDERVOLTAGE' }));
+    expect(result.healthScore).toBe(100);
+  });
+
+  it('raises a critical alert below an explicit confirmed undervoltage threshold', () => {
+    const result = assessBattery({ capability: 'extended', batteryPercent: 25, packVoltage: 47.3, undervoltageThresholdV: 47.6 });
 
     expect(result.alerts).toContainEqual(expect.objectContaining({ code: 'BATTERY_UNDERVOLTAGE', severity: 'critical' }));
     expect(result.healthScore).toBeLessThan(100);

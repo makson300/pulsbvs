@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { analyzeTelemetry, parseTelemetryCsv, parseTelemetryFile } from './telemetry';
+import { analyzeTelemetry, isUnsupportedTelemetryFile, parseTelemetryCsv, parseTelemetryFile } from './telemetry';
 
 describe('telemetry parsing and analysis', () => {
   it('parses CSV battery telemetry and classifies it as extended data', () => {
@@ -52,6 +52,19 @@ describe('telemetry parsing and analysis', () => {
     expect(analysis.importProfile.capability).toBe('route_only');
     expect(analysis.quality.score).toBe(0);
     expect(analysis.battery.alerts).toContainEqual(expect.objectContaining({ code: 'BATTERY_DATA_LIMITED' }));
+  });
+
+  it('does not treat files with an unknown extension as CSV', () => {
+    const parsed = parseTelemetryFile('flight.bin', 'timestamp,battery_percent\n2026-07-30T09:00:00Z,90');
+
+    expect(parsed.sourceKind).toBe('unsupported');
+    expect(parsed.notice).toContain('пока не принимается');
+  });
+
+  it('does not classify arbitrary XML as a KML route', () => {
+    const parsed = parseTelemetryFile('flight.xml', '<?xml version="1.0"?><report><coordinates>37.61,55.75</coordinates></report>');
+
+    expect(parsed.sourceKind).toBe('unsupported');
   });
 
   it('does not invent battery diagnostics for malformed CSV values', () => {
@@ -107,5 +120,12 @@ not-a-date,not-a-lat,37.61,unknown,voltage-hot,NaN,bad,cell`);
     expect(parsed.detectedColumns).toEqual([]);
     expect(analysis.importProfile.capability).toBe('route_only');
     expect(analysis.summary.points).toBe(0);
+  });
+
+  it('classifies DAT, ZIP and JSON before reading their contents', () => {
+    expect(isUnsupportedTelemetryFile('flight.DAT')).toBe(true);
+    expect(isUnsupportedTelemetryFile('archive.zip')).toBe(true);
+    expect(isUnsupportedTelemetryFile('export.json')).toBe(true);
+    expect(isUnsupportedTelemetryFile('flight.csv')).toBe(false);
   });
 });

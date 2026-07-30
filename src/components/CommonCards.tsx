@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import type { FlightAnalysis } from '../analytics/telemetry';
 import type { ListRow } from '../appData';
-import { ArrowUpRight } from 'lucide-react';
 
 export function List({ title, rows, action }: { title: string; rows: ListRow[]; action?: ReactNode }) {
   return (
@@ -23,7 +22,7 @@ export function Entity({ title, subtitle, tone, status, rows }: { title: string;
     <article className="panel entity-card">
       <div><p className="eyebrow">{subtitle}</p><h2>{title}</h2><span className={`status-pill status-pill--${tone}`}>{status}</span></div>
       <div className="entity-stats">{rows.map(([key, value]) => <span key={key}>{key}<b>{value}</b></span>)}</div>
-      <button className="entity-action">Открыть карточку <ArrowUpRight size={15} /></button>
+      <span className="entity-action">Карточка появится после первой загрузки</span>
     </article>
   );
 }

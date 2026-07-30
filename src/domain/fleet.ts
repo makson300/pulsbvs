@@ -91,10 +91,10 @@ export function createDefaultFleetState(): FleetState {
   };
 }
 
-export function loadFleetState(storage: Pick<Storage, 'getItem'> = localStorage): FleetState {
+export function loadFleetState(storage?: Pick<Storage, 'getItem'>): FleetState {
   const fallback = createDefaultFleetState();
   try {
-    const raw = storage.getItem(FLEET_STORAGE_KEY);
+    const raw = (storage ?? localStorage).getItem(FLEET_STORAGE_KEY);
     if (!raw) return fallback;
     const parsed = JSON.parse(raw) as Partial<FleetState>;
     const drones = Array.isArray(parsed.drones) && parsed.drones.length ? parsed.drones : fallback.drones;
@@ -112,8 +112,13 @@ export function loadFleetState(storage: Pick<Storage, 'getItem'> = localStorage)
   }
 }
 
-export function saveFleetState(state: FleetState, storage: Pick<Storage, 'setItem'> = localStorage) {
-  storage.setItem(FLEET_STORAGE_KEY, JSON.stringify(state));
+export function saveFleetState(state: FleetState, storage?: Pick<Storage, 'setItem'>) {
+  try {
+    (storage ?? localStorage).setItem(FLEET_STORAGE_KEY, JSON.stringify(state));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function createDroneAsset(name: string, model = 'DJI Mini 4 Pro'): DroneAsset {
@@ -143,7 +148,7 @@ export function createBatteryAsset(label: string): BatteryAsset {
 }
 
 export function canPersistImport(analysis: FlightAnalysis) {
-  return analysis.parsed.sourceKind !== 'unsupported';
+  return (analysis.parsed.sourceKind === 'csv' || analysis.parsed.sourceKind === 'kml') && analysis.parsed.rows.length > 0;
 }
 
 function cleanOriginNote(note?: FileOriginNote): FileOriginNote | undefined {

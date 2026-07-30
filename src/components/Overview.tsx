@@ -160,7 +160,7 @@ function RiskCard({ primaryAlert, openRecommendation }: { primaryAlert: FlightAn
 function FlightChart({ analysis, barValues }: { analysis: FlightAnalysis; barValues: number[] }) {
   return (
     <article className="panel flight-panel">
-      <div className="panel-heading"><div><p className="eyebrow">Анализ файла</p><h2>Разряд батареи</h2></div><button className="period-button">{analysis.summary.points} точек</button></div>
+      <div className="panel-heading"><div><p className="eyebrow">Анализ файла</p><h2>Разряд батареи</h2></div><span className="period-button">{analysis.summary.points} точек</span></div>
       <div className="chart-summary">
         <div><strong>{analysis.summary.durationMin?.toFixed(1) ?? '—'} мин</strong><span>длительность</span></div>
         <div><strong>{analysis.summary.maxCellDeviation?.toFixed(3) ?? '—'} В</strong><span>макс. разбаланс</span></div>

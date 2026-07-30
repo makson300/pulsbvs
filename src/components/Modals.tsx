@@ -12,6 +12,7 @@ export type ModalProps = {
   fileInput: RefObject<HTMLInputElement | null>;
   chooseFile: (file?: File) => void;
   uploadedName: string | null;
+  uploadError: string | null;
   primaryAlert: FlightAnalysis['alerts'][number] | undefined;
   loadDemo: (key: keyof typeof demoLogs) => void;
   loginDemo: (profile?: UserProfile) => void;
@@ -23,12 +24,12 @@ export type ModalProps = {
   setFileOriginNote: (note: FileOriginNote) => void;
 };
 
-export function Modal({ modal, setModal, fileInput, chooseFile, uploadedName, primaryAlert, loadDemo, loginDemo, user, setUser, fleetState, selectAssets, fileOriginNote, setFileOriginNote }: ModalProps) {
+export function Modal({ modal, setModal, fileInput, chooseFile, uploadedName, uploadError, primaryAlert, loadDemo, loginDemo, user, setUser, fleetState, selectAssets, fileOriginNote, setFileOriginNote }: ModalProps) {
   return (
     <div className="modal-backdrop" data-testid="modal-backdrop" onMouseDown={() => setModal(null)}>
       <section className="upload-modal" data-testid={`modal-${modal}`} onMouseDown={(event) => event.stopPropagation()}>
         <button className="close-button" onClick={() => setModal(null)} aria-label="Закрыть">×</button>
-        {modal === 'upload' && <UploadModal fileInput={fileInput} chooseFile={chooseFile} uploadedName={uploadedName} loadDemo={loadDemo} fleetState={fleetState} selectAssets={selectAssets} fileOriginNote={fileOriginNote} setFileOriginNote={setFileOriginNote} />}
+        {modal === 'upload' && <UploadModal fileInput={fileInput} chooseFile={chooseFile} uploadedName={uploadedName} uploadError={uploadError} loadDemo={loadDemo} fleetState={fleetState} selectAssets={selectAssets} fileOriginNote={fileOriginNote} setFileOriginNote={setFileOriginNote} />}
         {modal === 'auth' && <AuthModal user={user} setUser={setUser} loginDemo={loginDemo} />}
         {modal === 'lead' && <IconTitle icon={<Bell />} title="Заявка принята в демо-режиме" eyebrow="Пилот" text="В рабочей версии здесь будет форма заявки и уведомление ответственному специалисту." />}
         {modal === 'recommendation' && <IconTitle icon={<AlertTriangle />} title={primaryAlert?.title ?? 'Отклонений нет'} eyebrow="Рекомендация" text={primaryAlert?.recommendation ?? 'Продолжайте копить историю полётов и батарей.'} />}
@@ -76,7 +77,7 @@ function HelpModal() {
   );
 }
 
-function UploadModal({ fileInput, chooseFile, uploadedName, loadDemo, fleetState, selectAssets, fileOriginNote, setFileOriginNote }: Pick<ModalProps, 'fileInput' | 'chooseFile' | 'uploadedName' | 'loadDemo' | 'fleetState' | 'selectAssets' | 'fileOriginNote' | 'setFileOriginNote'>) {
+function UploadModal({ fileInput, chooseFile, uploadedName, uploadError, loadDemo, fleetState, selectAssets, fileOriginNote, setFileOriginNote }: Pick<ModalProps, 'fileInput' | 'chooseFile' | 'uploadedName' | 'uploadError' | 'loadDemo' | 'fleetState' | 'selectAssets' | 'fileOriginNote' | 'setFileOriginNote'>) {
   const intakeChecklist = [
     'Сначала выберите дрон и батарею, даже если батарея пока неизвестна.',
     'Файл из телефона или пульта полезен для маршрута, времени и части предупреждений.',
@@ -127,13 +128,18 @@ function UploadModal({ fileInput, chooseFile, uploadedName, loadDemo, fleetState
         <label>Дата или период полёта
           <input className="form-input" data-testid="origin-flight-date" value={fileOriginNote.flightDate ?? ''} onChange={(event) => setFileOriginNote({ ...fileOriginNote, flightDate: event.target.value })} placeholder="Например: 30.07, утро" />
         </label>
+        <label>Сценарий полёта
+          <input className="form-input" data-testid="origin-scenario" value={fileOriginNote.scenario ?? ''} onChange={(event) => setFileOriginNote({ ...fileOriginNote, scenario: event.target.value })} placeholder="Например: проверочный полёт без груза" />
+        </label>
         <label>Что было скрыто из чувствительных данных
           <textarea className="form-input" data-testid="origin-hidden-data" value={fileOriginNote.hiddenData ?? ''} onChange={(event) => setFileOriginNote({ ...fileOriginNote, hiddenData: event.target.value })} placeholder="Например: точные координаты, имя пилота" />
         </label>
       </div>
+      <p className="origin-note-local">Карточка файла в демо сохраняется только в этом браузере. Оригинал и важные заметки храните у себя в закрытой папке.</p>
       <input ref={fileInput} className="hidden-input" data-testid="file-input" type="file" onChange={(event) => chooseFile(event.target.files?.[0])} accept=".csv,.txt,.dat,.kml,.zip,.json" />
       <button className="drop-zone" data-testid="choose-file" onClick={() => fileInput.current?.click()}><CloudUpload size={23} /><strong>Выбрать файл</strong><span>CSV, TXT, DAT, KML, ZIP, JSON</span></button>
       {uploadedName && <div className="upload-result"><ShieldCheck size={18} />Загружен файл: «{uploadedName}».</div>}
+      {uploadError && <div className="upload-error" role="alert">{uploadError}</div>}
       <div className="sample-actions">
         <button onClick={() => downloadSample('puls-bvs-sample.csv', sampleCsv, 'text/csv;charset=utf-8')}>Скачать пример CSV</button>
         <button onClick={() => downloadSample('puls-bvs-route.kml', sampleKml, 'application/vnd.google-earth.kml+xml;charset=utf-8')}>Скачать пример KML</button>

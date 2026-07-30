@@ -87,13 +87,13 @@ function ImportHistory({ imports, drones, batteries, onOpenImport }: { imports: 
 
 function OriginNote({ note }: { note?: FileOriginNote }) {
   if (!note) return null;
-  const parts = [note.source && `Источник: ${note.source}`, note.flightDate && `Полёт: ${note.flightDate}`, note.hiddenData && `Скрыто: ${note.hiddenData}`].filter(Boolean);
+  const parts = [note.source && `Источник: ${note.source}`, note.flightDate && `Полёт: ${note.flightDate}`, note.scenario && `Сценарий: ${note.scenario}`, note.hiddenData && `Скрыто: ${note.hiddenData}`].filter(Boolean);
   return parts.length ? <small className="origin-note">{parts.join(' · ')}</small> : null;
 }
 
 function ImportProfile({ analysis }: { analysis: FlightAnalysis }) {
   const profile = analysis.importProfile;
-  const sourceLabel = analysis.parsed.sourceKind === 'unsupported' ? 'DAT/ZIP' : analysis.parsed.sourceKind.toUpperCase();
+  const sourceLabel = analysis.parsed.sourceKind === 'unsupported' ? 'Формат на проверке' : analysis.parsed.sourceKind.toUpperCase();
   const tone = profile.capability === 'battery_extended' ? 'good' : profile.capability === 'battery_basic' ? 'warning' : 'critical';
 
   return (
