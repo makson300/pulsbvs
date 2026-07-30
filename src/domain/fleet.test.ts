@@ -9,6 +9,7 @@ import {
   createManualFlightEntry,
   createPendingImport,
   createSavedImport,
+  getOperationalReportSummary,
   getFleetReadiness,
   getDocumentExpiryStatus,
   getManualFlightMinutes,
@@ -18,6 +19,14 @@ import {
   saveFleetState,
   setIncidentStatus,
   setMaintenanceTaskStatus,
+  removeManualFlightEntry,
+  removeDocumentRecord,
+  removeIncidentRecord,
+  removeMaintenanceTask,
+  updateDocumentRecord,
+  updateIncidentRecord,
+  updateMaintenanceTask,
+  updateManualFlightEntry,
   updateAssetPassport,
   upsertImport,
   upsertPendingImport,
@@ -168,6 +177,57 @@ describe('fleet domain state', () => {
     expect(getManualFlightMinutes([flight], 'another-drone')).toBe(0);
   });
 
+  it('updates operational records and keeps completion and resolution notes', () => {
+    const state = createDefaultFleetState();
+    const now = new Date('2026-07-30T10:00:00Z');
+    const task = createMaintenanceTask({ title: 'Осмотр', responsible: 'Иван' }, now);
+    const incident = createIncidentRecord({ title: 'Царапина', severity: 'warning', occurredOn: '2026-07-30' }, now);
+    const document = createDocumentRecord({ title: 'Страховка', documentType: 'Страховка' }, now);
+    const flight = createManualFlightEntry({ flightDate: '2026-07-30', droneId: state.selectedDroneId, pilot: 'Иван', purpose: 'Осмотр', durationMin: 10 }, now);
+
+    expect(updateMaintenanceTask(task, { status: 'completed', completionNote: 'Крепления проверены' }, now)).toMatchObject({ status: 'completed', responsible: 'Иван', completionNote: 'Крепления проверены', completedAt: now.toISOString() });
+    expect(updateIncidentRecord(incident, { status: 'resolved', resolutionNote: 'Осмотр завершён' }, now)).toMatchObject({ status: 'resolved', resolutionNote: 'Осмотр завершён', resolvedAt: now.toISOString() });
+    expect(updateDocumentRecord(document, { expiresOn: '2027-07-30', reference: 'Полис 42' })).toMatchObject({ expiresOn: '2027-07-30', reference: 'Полис 42' });
+    expect(updateManualFlightEntry(flight, { durationMin: -5, purpose: '  Проверка  ' }, now)).toMatchObject({ durationMin: 0, purpose: 'Проверка' });
+    expect(removeMaintenanceTask({ ...state, maintenanceTasks: [task] }, task.id).maintenanceTasks).toEqual([]);
+    expect(removeIncidentRecord({ ...state, incidents: [incident] }, incident.id).incidents).toEqual([]);
+    expect(removeDocumentRecord({ ...state, documents: [document] }, document.id).documents).toEqual([]);
+  });
+
+  it('removes only linked checklist runs and unlinks incidents when a manual flight is removed', () => {
+    const state = createDefaultFleetState();
+    const now = new Date('2026-07-30T10:00:00Z');
+    const first = createManualFlightEntry({ flightDate: '2026-07-30', droneId: state.selectedDroneId, pilot: 'Иван', purpose: 'Первый', durationMin: 10 }, now);
+    const second = createManualFlightEntry({ flightDate: '2026-07-30', droneId: state.selectedDroneId, pilot: 'Иван', purpose: 'Второй', durationMin: 10 }, now);
+    const answers = { airframe: true, battery: true, airspace: true, mission: true };
+    const linkedRun = createChecklistRun({ flightId: first.id, phase: 'preflight', answers }, now)!;
+    const retainedRun = createChecklistRun({ flightId: second.id, phase: 'preflight', answers }, now)!;
+    const linkedIncident = createIncidentRecord({ title: 'Наблюдение', severity: 'info', occurredOn: '2026-07-30', flightId: first.id }, now);
+    const next = removeManualFlightEntry({ ...state, manualFlights: [first, second], checklistRuns: [linkedRun, retainedRun], incidents: [linkedIncident] }, first.id);
+
+    expect(next.manualFlights).toEqual([second]);
+    expect(next.checklistRuns).toEqual([retainedRun]);
+    expect(next.incidents[0].flightId).toBeUndefined();
+  });
+
+  it('builds an operational report only from manual records in the selected period and asset', () => {
+    const state = createDefaultFleetState();
+    const now = new Date('2026-07-30T10:00:00Z');
+    const selectedFlight = createManualFlightEntry({ flightDate: '2026-07-30', droneId: state.selectedDroneId, pilot: 'Иван', purpose: 'Осмотр', durationMin: 16 }, now);
+    const otherFlight = createManualFlightEntry({ flightDate: '2026-07-20', droneId: 'other-drone', pilot: 'Мария', purpose: 'Тест', durationMin: 30 }, now);
+    const answers = { airframe: true, battery: true, airspace: true, mission: true };
+    const checklist = createChecklistRun({ flightId: selectedFlight.id, phase: 'preflight', answers }, now)!;
+    const task = createMaintenanceTask({ assetKind: 'drone', assetId: state.selectedDroneId, title: 'Осмотр' }, now);
+    const incident = createIncidentRecord({ assetKind: 'drone', assetId: state.selectedDroneId, title: 'Вмятина', severity: 'warning', occurredOn: '2026-07-30', flightId: selectedFlight.id }, now);
+    const summary = getOperationalReportSummary({ ...state, manualFlights: [selectedFlight, otherFlight], checklistRuns: [checklist], maintenanceTasks: [task], incidents: [incident] }, { from: '2026-07-25', to: '2026-07-31', assetKind: 'drone', assetId: state.selectedDroneId });
+
+    expect(summary.flightMinutes).toBe(16);
+    expect(summary.flights).toEqual([selectedFlight]);
+    expect(summary.openTaskCount).toBe(1);
+    expect(summary.openIncidentCount).toBe(1);
+    expect(summary.incompleteChecklistFlightCount).toBe(1);
+  });
+
   it('calculates readiness only from explicit operational facts', () => {
     const state = createDefaultFleetState();
     const now = new Date('2026-07-30T10:00:00Z');
@@ -180,6 +240,17 @@ describe('fleet domain state', () => {
     expect(getFleetReadiness({ ...state, documents: [expiredDocument] }, now).status).toBe('blocked');
     expect(setMaintenanceTaskStatus(task, 'completed', now).completedAt).toBe(now.toISOString());
     expect(setIncidentStatus(incident, 'resolved', now).resolvedAt).toBe(now.toISOString());
+  });
+
+  it('marks incomplete manual checklists and open warning incidents as operational attention, not a block', () => {
+    const state = createDefaultFleetState();
+    const now = new Date('2026-07-30T10:00:00Z');
+    const flight = createManualFlightEntry({ flightDate: '2026-07-30', droneId: state.selectedDroneId, pilot: 'Иван', purpose: 'Осмотр', durationMin: 10 }, now);
+    const incident = createIncidentRecord({ title: 'Осмотреть винт', severity: 'warning', occurredOn: '2026-07-30' }, now);
+    const readiness = getFleetReadiness({ ...state, manualFlights: [flight], incidents: [incident] }, now);
+
+    expect(readiness.status).toBe('attention');
+    expect(readiness.facts).toEqual(expect.arrayContaining(['Незакрытых событий, требующих внимания: 1', 'Ручных записей с незавершёнными чек-листами: 1']));
   });
 
   it('labels document expiry deterministically', () => {

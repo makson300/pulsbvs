@@ -46,7 +46,9 @@ export interface MaintenanceTask {
   title: string;
   dueDate?: string;
   status: TaskStatus;
+  responsible?: string;
   note?: string;
+  completionNote?: string;
   createdAt: string;
   completedAt?: string;
 }
@@ -59,9 +61,11 @@ export interface IncidentRecord {
   description?: string;
   severity: IncidentSeverity;
   occurredOn: string;
+  flightId?: string;
   status: IncidentStatus;
   createdAt: string;
   resolvedAt?: string;
+  resolutionNote?: string;
 }
 
 export interface DocumentRecord {
@@ -101,6 +105,26 @@ export interface FleetReadiness {
   status: 'ready' | 'attention' | 'blocked';
   label: string;
   facts: string[];
+}
+
+export interface OperationalReportFilters {
+  from?: string;
+  to?: string;
+  assetKind?: AssetKind;
+  assetId?: string;
+}
+
+export interface OperationalReportSummary {
+  flights: ManualFlightEntry[];
+  tasks: MaintenanceTask[];
+  incidents: IncidentRecord[];
+  documents: DocumentRecord[];
+  checklistRuns: ChecklistRun[];
+  flightMinutes: number;
+  openTaskCount: number;
+  openIncidentCount: number;
+  criticalOpenIncidentCount: number;
+  incompleteChecklistFlightCount: number;
 }
 
 export type DocumentExpiryStatus = 'current' | 'expires_soon' | 'expired' | 'no_expiry';
@@ -270,7 +294,9 @@ export function createMaintenanceTask(input: Omit<MaintenanceTask, 'id' | 'creat
     ...input,
     id: createId('maintenance', now),
     title: input.title.trim() || 'Задача обслуживания',
+    responsible: input.responsible?.trim() || undefined,
     note: input.note?.trim() || undefined,
+    completionNote: input.completionNote?.trim() || undefined,
     dueDate: input.dueDate || undefined,
     status: input.status ?? 'open',
     createdAt: now.toISOString(),
@@ -281,12 +307,30 @@ export function setMaintenanceTaskStatus(task: MaintenanceTask, status: TaskStat
   return { ...task, status, completedAt: status === 'completed' ? now.toISOString() : undefined };
 }
 
+export function updateMaintenanceTask(task: MaintenanceTask, update: Partial<Omit<MaintenanceTask, 'id' | 'createdAt' | 'completedAt'>>, now = new Date()): MaintenanceTask {
+  const next = { ...task, ...update };
+  return {
+    ...next,
+    title: next.title.trim() || 'Задача обслуживания',
+    responsible: next.responsible?.trim() || undefined,
+    note: next.note?.trim() || undefined,
+    completionNote: next.completionNote?.trim() || undefined,
+    dueDate: next.dueDate || undefined,
+    completedAt: next.status === 'completed' ? task.completedAt ?? now.toISOString() : undefined,
+  };
+}
+
+export function removeMaintenanceTask(state: FleetState, taskId: string): FleetState {
+  return { ...state, maintenanceTasks: state.maintenanceTasks.filter((task) => task.id !== taskId) };
+}
+
 export function createIncidentRecord(input: Omit<IncidentRecord, 'id' | 'createdAt' | 'resolvedAt' | 'status'> & { status?: IncidentStatus }, now = new Date()): IncidentRecord {
   return {
     ...input,
     id: createId('incident', now),
     title: input.title.trim() || 'Наблюдение без названия',
     description: input.description?.trim() || undefined,
+    flightId: input.flightId || undefined,
     occurredOn: input.occurredOn || toLocalDateKey(now),
     status: input.status ?? 'open',
     createdAt: now.toISOString(),
@@ -295,6 +339,23 @@ export function createIncidentRecord(input: Omit<IncidentRecord, 'id' | 'created
 
 export function setIncidentStatus(incident: IncidentRecord, status: IncidentStatus, now = new Date()): IncidentRecord {
   return { ...incident, status, resolvedAt: status === 'resolved' ? now.toISOString() : undefined };
+}
+
+export function updateIncidentRecord(incident: IncidentRecord, update: Partial<Omit<IncidentRecord, 'id' | 'createdAt' | 'resolvedAt'>>, now = new Date()): IncidentRecord {
+  const next = { ...incident, ...update };
+  return {
+    ...next,
+    title: next.title.trim() || 'Наблюдение без названия',
+    description: next.description?.trim() || undefined,
+    flightId: next.flightId || undefined,
+    resolutionNote: next.resolutionNote?.trim() || undefined,
+    occurredOn: next.occurredOn || toLocalDateKey(now),
+    resolvedAt: next.status === 'resolved' ? incident.resolvedAt ?? now.toISOString() : undefined,
+  };
+}
+
+export function removeIncidentRecord(state: FleetState, incidentId: string): FleetState {
+  return { ...state, incidents: state.incidents.filter((incident) => incident.id !== incidentId) };
 }
 
 export function createDocumentRecord(input: Omit<DocumentRecord, 'id' | 'createdAt'>, now = new Date()): DocumentRecord {
@@ -309,6 +370,21 @@ export function createDocumentRecord(input: Omit<DocumentRecord, 'id' | 'created
   };
 }
 
+export function updateDocumentRecord(document: DocumentRecord, update: Partial<Omit<DocumentRecord, 'id' | 'createdAt'>>): DocumentRecord {
+  const next = { ...document, ...update };
+  return {
+    ...next,
+    title: next.title.trim() || 'Документ без названия',
+    documentType: next.documentType.trim() || 'Другой документ',
+    reference: next.reference?.trim() || undefined,
+    expiresOn: next.expiresOn || undefined,
+  };
+}
+
+export function removeDocumentRecord(state: FleetState, documentId: string): FleetState {
+  return { ...state, documents: state.documents.filter((document) => document.id !== documentId) };
+}
+
 export function createManualFlightEntry(input: Omit<ManualFlightEntry, 'id' | 'createdAt'>, now = new Date()): ManualFlightEntry {
   return {
     ...input,
@@ -320,6 +396,29 @@ export function createManualFlightEntry(input: Omit<ManualFlightEntry, 'id' | 'c
     location: input.location?.trim() || undefined,
     note: input.note?.trim() || undefined,
     createdAt: now.toISOString(),
+  };
+}
+
+export function updateManualFlightEntry(flight: ManualFlightEntry, update: Partial<Omit<ManualFlightEntry, 'id' | 'createdAt'>>, now = new Date()): ManualFlightEntry {
+  const next = { ...flight, ...update };
+  return {
+    ...next,
+    flightDate: next.flightDate || toLocalDateKey(now),
+    pilot: next.pilot.trim() || 'Пилот не указан',
+    purpose: next.purpose.trim() || 'Рабочий вылет',
+    durationMin: Math.max(0, Number(next.durationMin) || 0),
+    batteryId: next.batteryId || undefined,
+    location: next.location?.trim() || undefined,
+    note: next.note?.trim() || undefined,
+  };
+}
+
+export function removeManualFlightEntry(state: FleetState, flightId: string): FleetState {
+  return {
+    ...state,
+    manualFlights: state.manualFlights.filter((flight) => flight.id !== flightId),
+    checklistRuns: state.checklistRuns.filter((run) => run.flightId !== flightId),
+    incidents: state.incidents.map((incident) => incident.flightId === flightId ? { ...incident, flightId: undefined } : incident),
   };
 }
 
@@ -337,8 +436,47 @@ export function createChecklistRun(input: Omit<ChecklistRun, 'id' | 'completedAt
   };
 }
 
+export function updateChecklistRun(run: ChecklistRun, input: Omit<ChecklistRun, 'id' | 'completedAt'>, now = new Date()): ChecklistRun | null {
+  if (run.flightId !== input.flightId || run.phase !== input.phase || !isChecklistComplete(input.phase, input.answers)) return null;
+  return { ...run, answers: input.answers, note: input.note?.trim() || undefined, completedAt: now.toISOString() };
+}
+
 export function getManualFlightMinutes(flights: ManualFlightEntry[], droneId?: string) {
   return flights.filter((flight) => !droneId || flight.droneId === droneId).reduce((total, flight) => total + flight.durationMin, 0);
+}
+
+function isWithinPeriod(date: string | undefined, filters: OperationalReportFilters) {
+  return Boolean(date && (!filters.from || date >= filters.from) && (!filters.to || date <= filters.to));
+}
+
+function matchesAsset(item: Pick<MaintenanceTask, 'assetKind' | 'assetId'>, filters: OperationalReportFilters) {
+  if (!filters.assetId) return true;
+  return item.assetKind === filters.assetKind && item.assetId === filters.assetId;
+}
+
+export function getOperationalReportSummary(state: FleetState, filters: OperationalReportFilters = {}): OperationalReportSummary {
+  const flights = state.manualFlights.filter((flight) => isWithinPeriod(flight.flightDate, filters) && (!filters.assetId || (filters.assetKind === 'drone' && flight.droneId === filters.assetId) || (filters.assetKind === 'battery' && flight.batteryId === filters.assetId)));
+  const flightIds = new Set(flights.map((flight) => flight.id));
+  const tasks = state.maintenanceTasks.filter((task) => matchesAsset(task, filters) && isWithinPeriod(task.createdAt.slice(0, 10), filters));
+  const incidents = state.incidents.filter((incident) => matchesAsset(incident, filters) && isWithinPeriod(incident.occurredOn, filters));
+  const documents = state.documents.filter((document) => matchesAsset(document, filters) && isWithinPeriod(document.createdAt.slice(0, 10), filters));
+  const checklistRuns = state.checklistRuns.filter((run) => flightIds.has(run.flightId));
+  const completedChecklists = new Set(checklistRuns.map((run) => `${run.flightId}:${run.phase}`));
+  const incompleteChecklistFlightCount = flights.filter((flight) => !completedChecklists.has(`${flight.id}:preflight`) || !completedChecklists.has(`${flight.id}:postflight`)).length;
+  const openIncidents = incidents.filter((incident) => incident.status === 'open');
+
+  return {
+    flights,
+    tasks,
+    incidents,
+    documents,
+    checklistRuns,
+    flightMinutes: getManualFlightMinutes(flights),
+    openTaskCount: tasks.filter((task) => task.status !== 'completed' && task.status !== 'cancelled').length,
+    openIncidentCount: openIncidents.length,
+    criticalOpenIncidentCount: openIncidents.filter((incident) => incident.severity === 'critical').length,
+    incompleteChecklistFlightCount,
+  };
 }
 
 export function getDocumentExpiryStatus(document: DocumentRecord, now = new Date()): DocumentExpiryStatus {
@@ -358,17 +496,21 @@ export function getFleetReadiness(state: FleetState, now = new Date()): FleetRea
   const today = toLocalDateKey(now);
   const overdueTasks = state.maintenanceTasks.filter((task) => task.status !== 'completed' && task.status !== 'cancelled' && isDueOnOrBefore(task.dueDate, today));
   const criticalIncidents = state.incidents.filter((item) => item.status === 'open' && item.severity === 'critical');
+  const warningIncidents = state.incidents.filter((item) => item.status === 'open' && item.severity === 'warning');
   const expiredDocuments = state.documents.filter((item) => getDocumentExpiryStatus(item, now) === 'expired');
   const expiringDocuments = state.documents.filter((item) => getDocumentExpiryStatus(item, now) === 'expires_soon');
+  const incompleteChecklistFlightCount = getOperationalReportSummary(state).incompleteChecklistFlightCount;
   const facts = [
     overdueTasks.length ? `Открытых задач со сроком: ${overdueTasks.length}` : '',
     criticalIncidents.length ? `Незакрытых критичных событий: ${criticalIncidents.length}` : '',
+    warningIncidents.length ? `Незакрытых событий, требующих внимания: ${warningIncidents.length}` : '',
     expiredDocuments.length ? `Просроченных документов: ${expiredDocuments.length}` : '',
     expiringDocuments.length ? `Документов истекают в ближайшие 30 дней: ${expiringDocuments.length}` : '',
+    incompleteChecklistFlightCount ? `Ручных записей с незавершёнными чек-листами: ${incompleteChecklistFlightCount}` : '',
   ].filter(Boolean);
 
   if (criticalIncidents.length || expiredDocuments.length) return { status: 'blocked', label: 'Требует решения', facts };
-  if (overdueTasks.length || expiringDocuments.length) return { status: 'attention', label: 'Нужно внимание', facts };
+  if (overdueTasks.length || warningIncidents.length || expiringDocuments.length || incompleteChecklistFlightCount) return { status: 'attention', label: 'Нужно внимание', facts };
   return { status: 'ready', label: 'Нет зафиксированных ограничений', facts: ['Нет открытых критичных событий, просроченных задач и документов.'] };
 }
 

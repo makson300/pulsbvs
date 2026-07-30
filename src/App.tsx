@@ -21,11 +21,17 @@ import {
   createPendingImport,
   createSavedImport,
   getFleetReadiness,
-  getManualFlightMinutes,
   loadFleetState,
+  removeDocumentRecord,
+  removeIncidentRecord,
+  removeMaintenanceTask,
+  removeManualFlightEntry,
   saveFleetState,
-  setIncidentStatus,
-  setMaintenanceTaskStatus,
+  updateDocumentRecord,
+  updateChecklistRun,
+  updateIncidentRecord,
+  updateMaintenanceTask,
+  updateManualFlightEntry,
   updateAssetPassport,
   upsertImport,
   upsertPendingImport,
@@ -183,30 +189,45 @@ function App() {
     setFleetState((state) => ({ ...state, maintenanceTasks: [createMaintenanceTask(input), ...state.maintenanceTasks] }));
   }
 
-  function changeTaskStatus(id: string, status: MaintenanceTask['status']) {
-    setFleetState((state) => ({ ...state, maintenanceTasks: state.maintenanceTasks.map((item) => item.id === id ? setMaintenanceTaskStatus(item, status) : item) }));
+  function updateMaintenance(id: string, update: Partial<Omit<MaintenanceTask, 'id' | 'createdAt' | 'completedAt'>>) {
+    setFleetState((state) => ({ ...state, maintenanceTasks: state.maintenanceTasks.map((item) => item.id === id ? updateMaintenanceTask(item, update) : item) }));
   }
 
   function addIncident(input: Omit<IncidentRecord, 'id' | 'createdAt' | 'resolvedAt' | 'status'>) {
     setFleetState((state) => ({ ...state, incidents: [createIncidentRecord(input), ...state.incidents] }));
   }
 
-  function changeIncidentStatus(id: string, status: IncidentRecord['status']) {
-    setFleetState((state) => ({ ...state, incidents: state.incidents.map((item) => item.id === id ? setIncidentStatus(item, status) : item) }));
+  function updateIncident(id: string, update: Partial<Omit<IncidentRecord, 'id' | 'createdAt' | 'resolvedAt'>>) {
+    setFleetState((state) => ({ ...state, incidents: state.incidents.map((item) => item.id === id ? updateIncidentRecord(item, update) : item) }));
   }
 
   function addDocument(input: Omit<DocumentRecord, 'id' | 'createdAt'>) {
     setFleetState((state) => ({ ...state, documents: [createDocumentRecord(input), ...state.documents] }));
   }
 
+  function updateDocument(id: string, update: Partial<Omit<DocumentRecord, 'id' | 'createdAt'>>) {
+    setFleetState((state) => ({ ...state, documents: state.documents.map((item) => item.id === id ? updateDocumentRecord(item, update) : item) }));
+  }
+
   function addManualFlight(input: Omit<ManualFlightEntry, 'id' | 'createdAt'>) {
     setFleetState((state) => ({ ...state, manualFlights: [createManualFlightEntry(input), ...state.manualFlights] }));
+  }
+
+  function updateManualFlight(id: string, update: Partial<Omit<ManualFlightEntry, 'id' | 'createdAt'>>) {
+    setFleetState((state) => ({ ...state, manualFlights: state.manualFlights.map((item) => item.id === id ? updateManualFlightEntry(item, update) : item) }));
   }
 
   function addChecklist(input: Omit<ChecklistRun, 'id' | 'completedAt'>) {
     const checklist = createChecklistRun(input);
     if (!checklist) return;
     setFleetState((state) => ({ ...state, checklistRuns: [checklist, ...state.checklistRuns.filter((item) => !(item.flightId === input.flightId && item.phase === input.phase))] }));
+  }
+
+  function updateChecklist(id: string, input: Omit<ChecklistRun, 'id' | 'completedAt'>) {
+    setFleetState((state) => ({
+      ...state,
+      checklistRuns: state.checklistRuns.map((item) => item.id === id ? updateChecklistRun(item, input) ?? item : item),
+    }));
   }
 
   const modalProps: ModalProps = {
@@ -294,9 +315,9 @@ function App() {
             onOpenImport={openSavedImport}
           />
         )}
-        {section === 'journal' && <JournalView drones={fleetState.drones} batteries={fleetState.batteries} flights={fleetState.manualFlights} checklistRuns={fleetState.checklistRuns} onAddFlight={addManualFlight} onAddChecklist={addChecklist} />}
-        {section === 'maintenance' && <MaintenanceView drones={fleetState.drones} batteries={fleetState.batteries} tasks={fleetState.maintenanceTasks} incidents={fleetState.incidents} documents={fleetState.documents} readiness={readiness} onAddTask={addMaintenanceTask} onTaskStatus={changeTaskStatus} onAddIncident={addIncident} onIncidentStatus={changeIncidentStatus} onAddDocument={addDocument} />}
-        {section === 'reports' && <ReportsView drones={fleetState.drones} batteries={fleetState.batteries} flights={fleetState.manualFlights} tasks={fleetState.maintenanceTasks} incidents={fleetState.incidents} documents={fleetState.documents} checklistRuns={fleetState.checklistRuns} />}
+        {section === 'journal' && <JournalView drones={fleetState.drones} batteries={fleetState.batteries} flights={fleetState.manualFlights} checklistRuns={fleetState.checklistRuns} incidents={fleetState.incidents} onAddFlight={addManualFlight} onUpdateFlight={updateManualFlight} onRemoveFlight={(id) => setFleetState((state) => removeManualFlightEntry(state, id))} onAddChecklist={addChecklist} onUpdateChecklist={updateChecklist} />}
+        {section === 'maintenance' && <MaintenanceView drones={fleetState.drones} batteries={fleetState.batteries} flights={fleetState.manualFlights} tasks={fleetState.maintenanceTasks} incidents={fleetState.incidents} documents={fleetState.documents} readiness={readiness} onAddTask={addMaintenanceTask} onUpdateTask={updateMaintenance} onRemoveTask={(id) => setFleetState((state) => removeMaintenanceTask(state, id))} onAddIncident={addIncident} onUpdateIncident={updateIncident} onRemoveIncident={(id) => setFleetState((state) => removeIncidentRecord(state, id))} onAddDocument={addDocument} onUpdateDocument={updateDocument} onRemoveDocument={(id) => setFleetState((state) => removeDocumentRecord(state, id))} />}
+        {section === 'reports' && <ReportsView drones={fleetState.drones} batteries={fleetState.batteries} fleetState={fleetState} />}
       </main>
 
       {modal && <Modal {...modalProps} />}
