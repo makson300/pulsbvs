@@ -16,10 +16,11 @@ export interface TelemetryPoint {
 
 export interface ParsedTelemetry {
   sourceName: string;
-  sourceKind: 'csv' | 'kml' | 'unknown';
+  sourceKind: 'csv' | 'kml' | 'unsupported' | 'unknown';
   rows: TelemetryPoint[];
   detectedColumns: string[];
   missingCoreFields: string[];
+  notice?: string;
 }
 
 export interface DataQualityReport {
@@ -123,6 +124,16 @@ export function parseTelemetryCsv(sourceName: string, content: string): ParsedTe
 
 export function parseTelemetryFile(sourceName: string, content: string): ParsedTelemetry {
   const lowerName = sourceName.toLowerCase();
+  if (lowerName.endsWith('.dat') || lowerName.endsWith('.zip')) {
+    return {
+      sourceName,
+      sourceKind: 'unsupported',
+      rows: [],
+      detectedColumns: [],
+      missingCoreFields: ['timestamp', 'batteryPercent', 'coordinates'],
+      notice: 'Файл принят, но декодер DAT/ZIP ещё не подключён. Аналитика по нему не выполняется, чтобы не показывать неподтверждённые выводы.',
+    };
+  }
   if (lowerName.endsWith('.kml') || content.trimStart().startsWith('<?xml') || content.includes('<kml')) {
     return parseKmlRoute(sourceName, content);
   }
@@ -218,9 +229,9 @@ function buildImportProfile(parsed: ParsedTelemetry, quality: DataQualityReport)
     nextBestFile: 'Для серьёзной диагностики T40 нужен экспорт с напряжениями ячеек, температурой, ошибками батареи и нагрузкой.',
   };
   return {
-    title: parsed.sourceKind === 'kml' ? 'Маршрут KML / SmartFarm' : 'Ограниченный источник',
+    title: parsed.sourceKind === 'kml' ? 'Маршрут KML / SmartFarm' : parsed.sourceKind === 'unsupported' ? 'Декодер ещё не подключён' : 'Ограниченный источник',
     capability: 'route_only',
-    verdict: 'Можно проверить маршрут и наличие координат, но нельзя честно оценить состояние батареи.',
+    verdict: parsed.notice ?? 'Можно проверить маршрут и наличие координат, но нельзя честно оценить состояние батареи.',
     nextBestFile: 'Загрузите CSV/TXT с батарейными полями или расширенный лог с пульта/обслуживания: voltage, battery_percent, temperature, cell1...cellN, warnings.',
   };
 }
