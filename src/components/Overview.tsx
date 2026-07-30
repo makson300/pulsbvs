@@ -3,6 +3,7 @@ import { demoLogs } from '../analytics/demoLogs';
 import type { FlightAnalysis } from '../analytics/telemetry';
 import { downloadSample, severityText, sourceTemplate } from '../appData';
 import { Metric, QualityPanel } from './CommonCards';
+import type { FleetReadiness } from '../domain/fleet';
 
 export function Overview({
   analysis,
@@ -14,6 +15,8 @@ export function Overview({
   droneCount,
   importCount,
   pendingCount,
+  manualFlightCount,
+  readiness,
 }: {
   analysis: FlightAnalysis;
   barValues: number[];
@@ -24,6 +27,8 @@ export function Overview({
   droneCount: number;
   importCount: number;
   pendingCount: number;
+  manualFlightCount: number;
+  readiness: FleetReadiness;
 }) {
   return (
     <>
@@ -31,11 +36,11 @@ export function Overview({
         <Metric icon={<Plane />} value={String(droneCount)} label="Дронов в парке" hint={`${importCount} загрузок в истории`} tone="blue" />
         <Metric icon={<BatteryCharging />} value={analysis.summary.batteryEnd !== null ? `${analysis.summary.batteryEnd}%` : '—'} label="Остаток батареи" hint="по последнему загруженному логу" tone="violet" />
         <Metric icon={<AlertTriangle />} value={String(analysis.alerts.length)} label="Предупреждений в файле" hint={`полнота данных: ${analysis.quality.score}%`} tone="amber" />
-        <Metric icon={<Gauge />} value="147,6 ч" label="Полётов за сезон" hint="пример для демо" tone="cyan" />
+        <Metric icon={<Gauge />} value={String(manualFlightCount)} label="Записей в журнале" hint="введены вручную" tone="cyan" />
       </section>
 
       <section className="dashboard-grid">
-        <FleetHealthCard droneCount={droneCount} importCount={importCount} />
+        <FleetHealthCard droneCount={droneCount} importCount={importCount} readiness={readiness} />
         <RiskCard primaryAlert={primaryAlert} openRecommendation={openRecommendation} />
         <FlightChart analysis={analysis} barValues={barValues} />
       </section>
@@ -122,22 +127,22 @@ function PilotReadiness() {
   );
 }
 
-function FleetHealthCard({ droneCount, importCount }: { droneCount: number; importCount: number }) {
+function FleetHealthCard({ droneCount, importCount, readiness }: { droneCount: number; importCount: number; readiness: FleetReadiness }) {
   return (
     <article className="panel fleet-health">
       <div className="panel-heading"><div><p className="eyebrow">Техническое состояние</p><h2>Готовность флота</h2></div></div>
       <div className="readiness">
         <div className="gauge">
           <svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="48" /><circle className="gauge-value" cx="60" cy="60" r="48" /></svg>
-          <div><strong>—</strong><small>нет оценки</small></div>
+          <div><strong>{readiness.status === 'ready' ? 'OK' : '!'}</strong><small>{readiness.label}</small></div>
         </div>
         <div className="readiness-list">
           <div><span className="status-dot status-dot--good" />В списке <b>{droneCount}</b></div>
           <div><span className="status-dot status-dot--attention" />Сохранённых файлов <b>{importCount}</b></div>
-          <div><span className="status-dot status-dot--critical" />Оценка состояния <b>нет данных</b></div>
+          <div><span className={`status-dot status-dot--${readiness.status === 'blocked' ? 'critical' : readiness.status === 'attention' ? 'attention' : 'good'}`} />Операционный статус <b>{readiness.label}</b></div>
         </div>
       </div>
-      <div className="health-footer"><ShieldCheck size={18} /><span>Оценка состояния появится только по подтверждённым данным</span></div>
+      <div className="health-footer"><ShieldCheck size={18} /><span>{readiness.facts[0]}</span></div>
     </article>
   );
 }

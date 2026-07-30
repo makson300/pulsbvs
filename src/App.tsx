@@ -3,23 +3,40 @@ import { demoLogs } from './analytics/demoLogs';
 import { analyzeTelemetry, isUnsupportedTelemetryFile, parseTelemetryCsv, parseTelemetryFile, type FlightAnalysis } from './analytics/telemetry';
 import { navItems } from './appData';
 import type { ModalState, Section, UserProfile, View } from './appTypes';
-import { BatteriesView, FleetView, MaintenanceView } from './components/FleetSections';
+import { BatteriesView, FleetView, MaintenanceView } from './components/OperationsSections';
 import { FlightsView } from './components/FlightsSection';
+import { JournalView, ReportsView } from './components/JournalSection';
 import { Landing } from './components/Landing';
 import { Modal, type ModalProps } from './components/Modals';
 import { Overview } from './components/Overview';
 import { PageHeader, Sidebar, Topbar } from './components/DashboardShell';
 import {
   createBatteryAsset,
+  createChecklistRun,
+  createDocumentRecord,
   createDroneAsset,
+  createIncidentRecord,
+  createMaintenanceTask,
+  createManualFlightEntry,
   createPendingImport,
   createSavedImport,
+  getFleetReadiness,
   loadFleetState,
   saveFleetState,
+  setIncidentStatus,
+  setMaintenanceTaskStatus,
+  updateAssetPassport,
   upsertImport,
   upsertPendingImport,
   type FleetState,
+  type AssetKind,
+  type AssetPassport,
+  type ChecklistRun,
+  type DocumentRecord,
   type FileOriginNote,
+  type IncidentRecord,
+  type MaintenanceTask,
+  type ManualFlightEntry,
   type SavedTelemetryImport,
 } from './domain/fleet';
 
@@ -76,6 +93,7 @@ function App() {
     () => analysis.parsed.rows.slice(-7).map((row) => Math.max(18, Math.min(100, row.batteryPercent ?? 50))),
     [analysis],
   );
+  const readiness = useMemo(() => getFleetReadiness(fleetState), [fleetState]);
 
   useEffect(() => {
     saveFleetState(fleetState);
@@ -154,6 +172,40 @@ function App() {
     });
   }
 
+  function savePassport(kind: AssetKind, id: string, passport: AssetPassport) {
+    setFleetState((state) => kind === 'drone'
+      ? { ...state, drones: state.drones.map((item) => item.id === id ? updateAssetPassport(item, passport) : item) }
+      : { ...state, batteries: state.batteries.map((item) => item.id === id ? updateAssetPassport(item, passport) : item) });
+  }
+
+  function addMaintenanceTask(input: Omit<MaintenanceTask, 'id' | 'createdAt' | 'completedAt' | 'status'>) {
+    setFleetState((state) => ({ ...state, maintenanceTasks: [createMaintenanceTask(input), ...state.maintenanceTasks] }));
+  }
+
+  function changeTaskStatus(id: string, status: MaintenanceTask['status']) {
+    setFleetState((state) => ({ ...state, maintenanceTasks: state.maintenanceTasks.map((item) => item.id === id ? setMaintenanceTaskStatus(item, status) : item) }));
+  }
+
+  function addIncident(input: Omit<IncidentRecord, 'id' | 'createdAt' | 'resolvedAt' | 'status'>) {
+    setFleetState((state) => ({ ...state, incidents: [createIncidentRecord(input), ...state.incidents] }));
+  }
+
+  function changeIncidentStatus(id: string, status: IncidentRecord['status']) {
+    setFleetState((state) => ({ ...state, incidents: state.incidents.map((item) => item.id === id ? setIncidentStatus(item, status) : item) }));
+  }
+
+  function addDocument(input: Omit<DocumentRecord, 'id' | 'createdAt'>) {
+    setFleetState((state) => ({ ...state, documents: [createDocumentRecord(input), ...state.documents] }));
+  }
+
+  function addManualFlight(input: Omit<ManualFlightEntry, 'id' | 'createdAt'>) {
+    setFleetState((state) => ({ ...state, manualFlights: [createManualFlightEntry(input), ...state.manualFlights] }));
+  }
+
+  function addChecklist(input: Omit<ChecklistRun, 'id' | 'completedAt'>) {
+    setFleetState((state) => ({ ...state, checklistRuns: [createChecklistRun(input), ...state.checklistRuns.filter((item) => !(item.flightId === input.flightId && item.phase === input.phase))] }));
+  }
+
   const modalProps: ModalProps = {
     modal: modal as Exclude<ModalState, null>,
     setModal,
@@ -210,7 +262,7 @@ function App() {
           onUpload={() => setModal('upload')}
         />
 
-        <PageHeader sectionTitle={sectionTitle} sourceName={uploadedName ?? analysis.parsed.sourceName} qualityScore={analysis.quality.score} />
+        <PageHeader sectionTitle={sectionTitle} sourceName={uploadedName ?? analysis.parsed.sourceName} qualityScore={analysis.quality.score} operational={section === 'fleet' || section === 'batteries' || section === 'maintenance' || section === 'journal' || section === 'reports'} />
 
         {section === 'overview' && (
           <Overview
@@ -223,10 +275,12 @@ function App() {
             droneCount={fleetState.drones.length}
             importCount={fleetState.imports.length}
             pendingCount={fleetState.pendingImports.length}
+            manualFlightCount={fleetState.manualFlights.length}
+            readiness={readiness}
           />
         )}
-        {section === 'fleet' && <FleetView drones={fleetState.drones} batteries={fleetState.batteries} onAddDrone={addDrone} />}
-        {section === 'batteries' && <BatteriesView batteries={fleetState.batteries} onAddBattery={addBattery} />}
+        {section === 'fleet' && <FleetView drones={fleetState.drones} onAddDrone={addDrone} onSavePassport={savePassport} />}
+        {section === 'batteries' && <BatteriesView batteries={fleetState.batteries} onAddBattery={addBattery} onSavePassport={savePassport} />}
         {section === 'flights' && (
           <FlightsView
             analysis={analysis}
@@ -237,7 +291,9 @@ function App() {
             onOpenImport={openSavedImport}
           />
         )}
-        {section === 'maintenance' && <MaintenanceView />}
+        {section === 'journal' && <JournalView drones={fleetState.drones} batteries={fleetState.batteries} flights={fleetState.manualFlights} checklistRuns={fleetState.checklistRuns} onAddFlight={addManualFlight} onAddChecklist={addChecklist} />}
+        {section === 'maintenance' && <MaintenanceView drones={fleetState.drones} batteries={fleetState.batteries} tasks={fleetState.maintenanceTasks} incidents={fleetState.incidents} documents={fleetState.documents} readiness={readiness} onAddTask={addMaintenanceTask} onTaskStatus={changeTaskStatus} onAddIncident={addIncident} onIncidentStatus={changeIncidentStatus} onAddDocument={addDocument} />}
+        {section === 'reports' && <ReportsView drones={fleetState.drones} batteries={fleetState.batteries} flights={fleetState.manualFlights} tasks={fleetState.maintenanceTasks} incidents={fleetState.incidents} documents={fleetState.documents} checklistRuns={fleetState.checklistRuns} />}
       </main>
 
       {modal && <Modal {...modalProps} />}

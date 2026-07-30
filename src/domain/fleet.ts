@@ -1,6 +1,20 @@
 import type { FlightAnalysis } from '../analytics/telemetry';
 
 export type AssetTone = 'good' | 'warning' | 'critical';
+export type AssetKind = 'drone' | 'battery';
+export type TaskStatus = 'open' | 'in_progress' | 'completed' | 'cancelled';
+export type IncidentSeverity = 'info' | 'warning' | 'critical';
+export type IncidentStatus = 'open' | 'resolved';
+export type ChecklistPhase = 'preflight' | 'postflight';
+
+export interface AssetPassport {
+  registrationNumber?: string;
+  serialNumber?: string;
+  owner?: string;
+  acquiredOn?: string;
+  note?: string;
+  updatedAt?: string;
+}
 
 export interface DroneAsset {
   id: string;
@@ -11,6 +25,7 @@ export interface DroneAsset {
   flightHours: string | null;
   assignedBatteryId?: string;
   tone: AssetTone;
+  passport?: AssetPassport;
 }
 
 export interface BatteryAsset {
@@ -21,6 +36,71 @@ export interface BatteryAsset {
   status: string;
   issue: string;
   tone: AssetTone;
+  passport?: AssetPassport;
+}
+
+export interface MaintenanceTask {
+  id: string;
+  assetKind?: AssetKind;
+  assetId?: string;
+  title: string;
+  dueDate?: string;
+  status: TaskStatus;
+  note?: string;
+  createdAt: string;
+  completedAt?: string;
+}
+
+export interface IncidentRecord {
+  id: string;
+  assetKind?: AssetKind;
+  assetId?: string;
+  title: string;
+  description?: string;
+  severity: IncidentSeverity;
+  occurredOn: string;
+  status: IncidentStatus;
+  createdAt: string;
+  resolvedAt?: string;
+}
+
+export interface DocumentRecord {
+  id: string;
+  assetKind?: AssetKind;
+  assetId?: string;
+  title: string;
+  documentType: string;
+  expiresOn?: string;
+  reference?: string;
+  createdAt: string;
+}
+
+export interface ChecklistRun {
+  id: string;
+  flightId: string;
+  phase: ChecklistPhase;
+  answers: Record<string, boolean>;
+  note?: string;
+  completedAt: string;
+}
+
+export interface ManualFlightEntry {
+  id: string;
+  flightDate: string;
+  droneId: string;
+  batteryId?: string;
+  pilot: string;
+  purpose: string;
+  durationMin: number;
+  location?: string;
+  note?: string;
+  createdAt: string;
+}
+
+export interface FleetReadiness {
+  status: 'ready' | 'attention' | 'blocked';
+  label: string;
+  facts: string[];
 }
 
 export interface FileOriginNote {
@@ -64,6 +144,11 @@ export interface FleetState {
   batteries: BatteryAsset[];
   imports: SavedTelemetryImport[];
   pendingImports: PendingTelemetryImport[];
+  maintenanceTasks: MaintenanceTask[];
+  incidents: IncidentRecord[];
+  documents: DocumentRecord[];
+  manualFlights: ManualFlightEntry[];
+  checklistRuns: ChecklistRun[];
   selectedDroneId: string;
   selectedBatteryId: string;
 }
@@ -86,6 +171,11 @@ export function createDefaultFleetState(): FleetState {
     batteries: defaultBatteries,
     imports: [],
     pendingImports: [],
+    maintenanceTasks: [],
+    incidents: [],
+    documents: [],
+    manualFlights: [],
+    checklistRuns: [],
     selectedDroneId: defaultDrones[0].id,
     selectedBatteryId: defaultBatteries[0].id,
   };
@@ -104,6 +194,11 @@ export function loadFleetState(storage?: Pick<Storage, 'getItem'>): FleetState {
       batteries,
       imports: Array.isArray(parsed.imports) ? parsed.imports : [],
       pendingImports: Array.isArray(parsed.pendingImports) ? parsed.pendingImports : [],
+      maintenanceTasks: Array.isArray(parsed.maintenanceTasks) ? parsed.maintenanceTasks : [],
+      incidents: Array.isArray(parsed.incidents) ? parsed.incidents : [],
+      documents: Array.isArray(parsed.documents) ? parsed.documents : [],
+      manualFlights: Array.isArray(parsed.manualFlights) ? parsed.manualFlights : [],
+      checklistRuns: Array.isArray(parsed.checklistRuns) ? parsed.checklistRuns : [],
       selectedDroneId: parsed.selectedDroneId && drones.some((drone) => drone.id === parsed.selectedDroneId) ? parsed.selectedDroneId : drones[0].id,
       selectedBatteryId: parsed.selectedBatteryId && batteries.some((battery) => battery.id === parsed.selectedBatteryId) ? parsed.selectedBatteryId : batteries[0].id,
     };
@@ -145,6 +240,105 @@ export function createBatteryAsset(label: string): BatteryAsset {
     issue: 'Циклы и состояние не подтверждены',
     tone: 'warning',
   };
+}
+
+function createId(prefix: string, now = new Date()) {
+  return `${prefix}-${now.getTime()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export function updateAssetPassport<T extends DroneAsset | BatteryAsset>(asset: T, passport: AssetPassport, now = new Date()): T {
+  const clean = Object.fromEntries(Object.entries(passport).map(([key, value]) => [key, value?.trim()]).filter(([, value]) => Boolean(value)));
+  return { ...asset, passport: { ...clean, updatedAt: now.toISOString() } } as T;
+}
+
+export function createMaintenanceTask(input: Omit<MaintenanceTask, 'id' | 'createdAt' | 'completedAt' | 'status'> & { status?: TaskStatus }, now = new Date()): MaintenanceTask {
+  return {
+    ...input,
+    id: createId('maintenance', now),
+    title: input.title.trim() || 'Задача обслуживания',
+    note: input.note?.trim() || undefined,
+    dueDate: input.dueDate || undefined,
+    status: input.status ?? 'open',
+    createdAt: now.toISOString(),
+  };
+}
+
+export function setMaintenanceTaskStatus(task: MaintenanceTask, status: TaskStatus, now = new Date()): MaintenanceTask {
+  return { ...task, status, completedAt: status === 'completed' ? now.toISOString() : undefined };
+}
+
+export function createIncidentRecord(input: Omit<IncidentRecord, 'id' | 'createdAt' | 'resolvedAt' | 'status'> & { status?: IncidentStatus }, now = new Date()): IncidentRecord {
+  return {
+    ...input,
+    id: createId('incident', now),
+    title: input.title.trim() || 'Наблюдение без названия',
+    description: input.description?.trim() || undefined,
+    occurredOn: input.occurredOn || now.toISOString().slice(0, 10),
+    status: input.status ?? 'open',
+    createdAt: now.toISOString(),
+  };
+}
+
+export function setIncidentStatus(incident: IncidentRecord, status: IncidentStatus, now = new Date()): IncidentRecord {
+  return { ...incident, status, resolvedAt: status === 'resolved' ? now.toISOString() : undefined };
+}
+
+export function createDocumentRecord(input: Omit<DocumentRecord, 'id' | 'createdAt'>, now = new Date()): DocumentRecord {
+  return {
+    ...input,
+    id: createId('document', now),
+    title: input.title.trim() || 'Документ без названия',
+    documentType: input.documentType.trim() || 'Другой документ',
+    reference: input.reference?.trim() || undefined,
+    expiresOn: input.expiresOn || undefined,
+    createdAt: now.toISOString(),
+  };
+}
+
+export function createManualFlightEntry(input: Omit<ManualFlightEntry, 'id' | 'createdAt'>, now = new Date()): ManualFlightEntry {
+  return {
+    ...input,
+    id: createId('manual-flight', now),
+    flightDate: input.flightDate || now.toISOString().slice(0, 10),
+    pilot: input.pilot.trim() || 'Пилот не указан',
+    purpose: input.purpose.trim() || 'Рабочий вылет',
+    durationMin: Math.max(0, Number(input.durationMin) || 0),
+    location: input.location?.trim() || undefined,
+    note: input.note?.trim() || undefined,
+    createdAt: now.toISOString(),
+  };
+}
+
+export function createChecklistRun(input: Omit<ChecklistRun, 'id' | 'completedAt'>, now = new Date()): ChecklistRun {
+  return {
+    ...input,
+    id: createId('checklist', now),
+    note: input.note?.trim() || undefined,
+    completedAt: now.toISOString(),
+  };
+}
+
+function isDueOnOrBefore(date: string | undefined, today: string) {
+  return Boolean(date && date <= today);
+}
+
+export function getFleetReadiness(state: FleetState, now = new Date()): FleetReadiness {
+  const today = now.toISOString().slice(0, 10);
+  const inThirtyDays = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const overdueTasks = state.maintenanceTasks.filter((task) => task.status !== 'completed' && task.status !== 'cancelled' && isDueOnOrBefore(task.dueDate, today));
+  const criticalIncidents = state.incidents.filter((item) => item.status === 'open' && item.severity === 'critical');
+  const expiredDocuments = state.documents.filter((item) => item.expiresOn && item.expiresOn < today);
+  const expiringDocuments = state.documents.filter((item) => item.expiresOn && item.expiresOn >= today && item.expiresOn <= inThirtyDays);
+  const facts = [
+    overdueTasks.length ? `Открытых задач со сроком: ${overdueTasks.length}` : '',
+    criticalIncidents.length ? `Незакрытых критичных событий: ${criticalIncidents.length}` : '',
+    expiredDocuments.length ? `Просроченных документов: ${expiredDocuments.length}` : '',
+    expiringDocuments.length ? `Документов истекают в ближайшие 30 дней: ${expiringDocuments.length}` : '',
+  ].filter(Boolean);
+
+  if (criticalIncidents.length || expiredDocuments.length) return { status: 'blocked', label: 'Требует решения', facts };
+  if (overdueTasks.length || expiringDocuments.length) return { status: 'attention', label: 'Нужно внимание', facts };
+  return { status: 'ready', label: 'Нет зафиксированных ограничений', facts: ['Нет открытых критичных событий, просроченных задач и документов.'] };
 }
 
 export function canPersistImport(analysis: FlightAnalysis) {

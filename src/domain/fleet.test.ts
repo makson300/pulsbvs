@@ -1,6 +1,23 @@
 import { describe, expect, it } from 'vitest';
 import { analyzeTelemetry, parseTelemetryCsv, parseTelemetryFile } from '../analytics/telemetry';
-import { createDefaultFleetState, createPendingImport, createSavedImport, loadFleetState, saveFleetState, upsertImport, upsertPendingImport } from './fleet';
+import {
+  createChecklistRun,
+  createDefaultFleetState,
+  createDocumentRecord,
+  createIncidentRecord,
+  createMaintenanceTask,
+  createManualFlightEntry,
+  createPendingImport,
+  createSavedImport,
+  getFleetReadiness,
+  loadFleetState,
+  saveFleetState,
+  setIncidentStatus,
+  setMaintenanceTaskStatus,
+  updateAssetPassport,
+  upsertImport,
+  upsertPendingImport,
+} from './fleet';
 
 function memoryStorage(initial?: string) {
   const store = new Map<string, string>();
@@ -22,6 +39,8 @@ describe('fleet domain state', () => {
     expect(state.batteries[0].cycles).toBeNull();
     expect(state.imports).toEqual([]);
     expect(state.pendingImports).toEqual([]);
+    expect(state.maintenanceTasks).toEqual([]);
+    expect(state.manualFlights).toEqual([]);
     expect(state.selectedDroneId).toBe(state.drones[0].id);
     expect(state.selectedBatteryId).toBe(state.batteries[0].id);
   });
@@ -107,5 +126,44 @@ describe('fleet domain state', () => {
     const pending = createPendingImport(analysis, state.selectedDroneId, state.selectedBatteryId, new Date('2026-07-30T10:00:00Z'), { source: 'пульт', hiddenData: 'имя пилота' });
 
     expect(pending?.originNote).toEqual({ source: 'пульт', flightDate: undefined, scenario: undefined, hiddenData: 'имя пилота' });
+  });
+
+  it('adds missing operational collections when restoring older browser data', () => {
+    const storage = memoryStorage(JSON.stringify({ drones: createDefaultFleetState().drones, batteries: createDefaultFleetState().batteries, imports: [] }));
+
+    const restored = loadFleetState(storage);
+
+    expect(restored.maintenanceTasks).toEqual([]);
+    expect(restored.incidents).toEqual([]);
+    expect(restored.documents).toEqual([]);
+    expect(restored.manualFlights).toEqual([]);
+    expect(restored.checklistRuns).toEqual([]);
+  });
+
+  it('creates operational records independently from telemetry and preserves manual semantics', () => {
+    const state = createDefaultFleetState();
+    const now = new Date('2026-07-30T10:00:00Z');
+    const flight = createManualFlightEntry({ flightDate: '2026-07-30', droneId: state.selectedDroneId, batteryId: state.selectedBatteryId, pilot: 'Иван', purpose: 'Осмотр поля', durationMin: 18, location: 'Поле 7' }, now);
+    const checklist = createChecklistRun({ flightId: flight.id, phase: 'preflight', answers: { airframe: true, battery: true } }, now);
+    const passport = updateAssetPassport(state.drones[0], { serialNumber: 'SN-001', owner: 'АгроСфера' }, now);
+
+    expect(flight.durationMin).toBe(18);
+    expect(flight.createdAt).toBe(now.toISOString());
+    expect(checklist.flightId).toBe(flight.id);
+    expect(passport.passport).toMatchObject({ serialNumber: 'SN-001', owner: 'АгроСфера' });
+  });
+
+  it('calculates readiness only from explicit operational facts', () => {
+    const state = createDefaultFleetState();
+    const now = new Date('2026-07-30T10:00:00Z');
+    const task = createMaintenanceTask({ assetKind: 'drone', assetId: state.selectedDroneId, title: 'Проверить пропеллеры', dueDate: '2026-07-29' }, now);
+    const incident = createIncidentRecord({ assetKind: 'drone', assetId: state.selectedDroneId, title: 'Повреждение луча', severity: 'critical', occurredOn: '2026-07-30' }, now);
+    const expiredDocument = createDocumentRecord({ assetKind: 'drone', assetId: state.selectedDroneId, title: 'Страховка', documentType: 'Страховка', expiresOn: '2026-07-20' }, now);
+
+    expect(getFleetReadiness({ ...state, maintenanceTasks: [task] }, now).status).toBe('attention');
+    expect(getFleetReadiness({ ...state, incidents: [incident] }, now).status).toBe('blocked');
+    expect(getFleetReadiness({ ...state, documents: [expiredDocument] }, now).status).toBe('blocked');
+    expect(setMaintenanceTaskStatus(task, 'completed', now).completedAt).toBe(now.toISOString());
+    expect(setIncidentStatus(incident, 'resolved', now).resolvedAt).toBe(now.toISOString());
   });
 });

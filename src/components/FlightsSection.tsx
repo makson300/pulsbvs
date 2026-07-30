@@ -1,8 +1,8 @@
 import { AlertTriangle, CheckCircle2, CircleHelp } from 'lucide-react';
 import type { FlightAnalysis } from '../analytics/telemetry';
-import { capabilityText, flights } from '../appData';
+import { capabilityText } from '../appData';
 import type { BatteryAsset, DroneAsset, FileOriginNote, PendingTelemetryImport, SavedTelemetryImport } from '../domain/fleet';
-import { List, QualityPanel } from './CommonCards';
+import { QualityPanel } from './CommonCards';
 
 export function FlightsView({ analysis, imports, pendingImports, drones, batteries, onOpenImport }: { analysis: FlightAnalysis; imports: SavedTelemetryImport[]; pendingImports: PendingTelemetryImport[]; drones: DroneAsset[]; batteries: BatteryAsset[]; onOpenImport: (item: SavedTelemetryImport) => void }) {
   return (
@@ -11,16 +11,6 @@ export function FlightsView({ analysis, imports, pendingImports, drones, batteri
       <RecognizedData analysis={analysis} />
       <ImportHistory imports={imports} drones={drones} batteries={batteries} onOpenImport={onOpenImport} />
       <PendingImportQueue pendingImports={pendingImports} drones={drones} batteries={batteries} />
-      <List
-        title="Последние демо-полёты"
-        rows={flights.map((flight) => ({
-          icon: flight.result === 'ok' ? <CheckCircle2 size={17} /> : <AlertTriangle size={17} />,
-          tone: flight.result,
-          title: `${flight.id} · ${flight.drone}`,
-          text: flight.text,
-          meta: `${flight.date} · ${flight.duration}`,
-        }))}
-      />
     </>
   );
 }

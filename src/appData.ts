@@ -1,4 +1,4 @@
-import { Activity, BatteryCharging, LayoutDashboard, Plane, Wrench, type LucideIcon } from 'lucide-react';
+import { Activity, BatteryCharging, ClipboardCheck, FileBarChart, LayoutDashboard, Plane, Wrench, type LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import type { Section } from './appTypes';
 
@@ -10,19 +10,9 @@ export const navItems: NavItem[] = [
   { id: 'fleet', label: 'Флот', icon: Plane },
   { id: 'batteries', label: 'Батареи', icon: BatteryCharging },
   { id: 'flights', label: 'Полёты', icon: Activity },
+  { id: 'journal', label: 'Журнал полётов', icon: ClipboardCheck },
   { id: 'maintenance', label: 'Обслуживание', icon: Wrench },
-];
-
-export const flights = [
-  { id: 'FL-2048', drone: 'DJI Avata 2', date: 'Сегодня 09:18', duration: '6 мин', result: 'warning', text: 'Пример файла с данными по батарее' },
-  { id: 'FL-2047', drone: 'DJI Avata 360', date: 'Вчера 17:40', duration: '11 мин', result: 'ok', text: 'Маршрут без данных по батарее' },
-  { id: 'FL-2046', drone: 'DJI Mini 4 Pro', date: 'Вчера 12:05', duration: '18 мин', result: 'ok', text: 'Тестовый файл для проверки загрузки' },
-];
-
-export const maintenance = [
-  { target: 'DJI Mini 4 Pro', type: 'Заполнить заметку о первом файле', due: 'Перед загрузкой', status: 'Открыто', tone: 'warning' },
-  { target: 'Батарея без серийного номера', type: 'Дать понятное название и указать, откуда файл', due: 'До проверки', status: 'Ожидает', tone: 'warning' },
-  { target: 'DJI Avata 2', type: 'Подготовить рабочую копию лога', due: 'После получения файла', status: 'Назначено', tone: 'ok' },
+  { id: 'reports', label: 'Отчёты', icon: FileBarChart },
 ];
 
 export const severityText = { info: 'Информация', warning: 'Внимание', critical: 'Критично' } as const;
