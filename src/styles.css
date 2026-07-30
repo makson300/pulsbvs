@@ -103,7 +103,16 @@ button { border: 0; font: inherit; cursor: pointer; }
 .pending-imports { border-color: #6f5424; background: linear-gradient(180deg, rgba(43, 34, 18, .76), rgba(11, 24, 42, .92)); }
 .pending-row { cursor: default; }
 .pending-row small { display: block; color: #ffc66d; font-size: 10px; line-height: 1.45; margin-top: 6px; }
-@media (max-width: 900px) { .recognized-grid { grid-template-columns: 1fr; } }
+.pilot-readiness { margin-top: 15px; }
+.readiness-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
+.readiness-step { position: relative; min-height: 126px; padding: 16px; border: 1px solid #21466d; border-radius: 17px; background: #0b213f; overflow: hidden; }
+.readiness-step::before { content: ''; position: absolute; inset: 0 0 auto; height: 3px; background: #477fc5; }
+.readiness-step--done::before { background: linear-gradient(90deg, #35c184, #79dcae); }
+.readiness-step--next::before { background: linear-gradient(90deg, #2c82ee, #77a9ff); }
+.readiness-step--blocked::before { background: linear-gradient(90deg, #d89a2b, #ffcf78); }
+.readiness-step strong { display: block; color: #eff7ff; font-size: 12px; line-height: 1.35; margin-bottom: 10px; }
+.readiness-step p { color: #91abc8; font-size: 11px; line-height: 1.55; margin: 0; }
+@media (max-width: 900px) { .recognized-grid, .readiness-steps { grid-template-columns: 1fr; } }
 
 .landing { min-height: 100vh; padding: 26px clamp(18px, 5vw, 72px) 70px; background: radial-gradient(circle at 82% 7%, rgba(62, 126, 220, .25), transparent 30rem), radial-gradient(circle at 8% 16%, rgba(92, 82, 210, .18), transparent 24rem), linear-gradient(180deg, #071225 0%, #08162a 55%, #061021 100%); }
 .landing-nav { display: flex; align-items: center; justify-content: space-between; gap: 18px; max-width: 1180px; margin: 0 auto 58px; }

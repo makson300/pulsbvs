@@ -544,7 +544,37 @@ function Overview({
           <p>Кнопки меняют реальные входные данные, пересчитывают алерты и сохраняют поддерживаемый импорт в историю.</p>
         </article>
       </section>
+      <PilotReadiness />
     </>
+  );
+}
+
+function PilotReadiness() {
+  const readinessItems = [
+    { status: 'done', title: 'Контур импорта готов', text: 'CSV/TXT/KML проходят через качество данных, историю и привязку к активам.' },
+    { status: 'done', title: 'Очередь исследования включена', text: 'DAT/ZIP/JSON принимаются без аналитики и не становятся полноценной историей.' },
+    { status: 'next', title: 'Нужен первый реальный лог', text: 'Оригинал хранится вне Git, рабочая копия загружается вместе с source.txt.' },
+    { status: 'blocked', title: 'Адаптер ждёт схему', text: 'Модельные правила и декодеры пишем только после изучения обезличенного файла.' },
+  ];
+
+  return (
+    <section className="panel pilot-readiness">
+      <div className="panel-heading">
+        <div>
+          <p className="eyebrow">Готовность к пилоту</p>
+          <h2>Что осталось до полноценной работы</h2>
+        </div>
+        <span className="status-pill status-pill--warning">Ждём реальные логи</span>
+      </div>
+      <div className="readiness-steps">
+        {readinessItems.map((item) => (
+          <article className={`readiness-step readiness-step--${item.status}`} key={item.title}>
+            <strong>{item.title}</strong>
+            <p>{item.text}</p>
+          </article>
+        ))}
+      </div>
+    </section>
   );
 }
 
