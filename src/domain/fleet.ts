@@ -39,10 +39,22 @@ export interface SavedTelemetryImport {
   analysis: FlightAnalysis;
 }
 
+export interface PendingTelemetryImport {
+  id: string;
+  sourceName: string;
+  importedAt: string;
+  droneId: string;
+  batteryId: string;
+  sourceKind: FlightAnalysis['parsed']['sourceKind'];
+  reason: string;
+  nextStep: string;
+}
+
 export interface FleetState {
   drones: DroneAsset[];
   batteries: BatteryAsset[];
   imports: SavedTelemetryImport[];
+  pendingImports: PendingTelemetryImport[];
   selectedDroneId: string;
   selectedBatteryId: string;
 }
@@ -64,6 +76,7 @@ export function createDefaultFleetState(): FleetState {
     drones: defaultDrones,
     batteries: defaultBatteries,
     imports: [],
+    pendingImports: [],
     selectedDroneId: defaultDrones[0].id,
     selectedBatteryId: defaultBatteries[0].id,
   };
@@ -81,6 +94,7 @@ export function loadFleetState(storage: Pick<Storage, 'getItem'> = localStorage)
       drones,
       batteries,
       imports: Array.isArray(parsed.imports) ? parsed.imports : [],
+      pendingImports: Array.isArray(parsed.pendingImports) ? parsed.pendingImports : [],
       selectedDroneId: parsed.selectedDroneId && drones.some((drone) => drone.id === parsed.selectedDroneId) ? parsed.selectedDroneId : drones[0].id,
       selectedBatteryId: parsed.selectedBatteryId && batteries.some((battery) => battery.id === parsed.selectedBatteryId) ? parsed.selectedBatteryId : batteries[0].id,
     };
@@ -143,6 +157,24 @@ export function createSavedImport(analysis: FlightAnalysis, droneId: string, bat
   };
 }
 
+export function createPendingImport(analysis: FlightAnalysis, droneId: string, batteryId: string, now = new Date()): PendingTelemetryImport | null {
+  if (canPersistImport(analysis)) return null;
+  return {
+    id: `pending-${now.getTime()}-${Math.random().toString(36).slice(2, 8)}`,
+    sourceName: analysis.parsed.sourceName,
+    importedAt: now.toISOString(),
+    droneId,
+    batteryId,
+    sourceKind: analysis.parsed.sourceKind,
+    reason: analysis.parsed.notice ?? analysis.importProfile.verdict,
+    nextStep: 'Сохранить оригинал вне Git, обезличить при необходимости и исследовать структуру файла перед подключением декодера.',
+  };
+}
+
 export function upsertImport(state: FleetState, savedImport: SavedTelemetryImport): FleetState {
   return { ...state, imports: [savedImport, ...state.imports.filter((item) => item.id !== savedImport.id)].slice(0, 50) };
+}
+
+export function upsertPendingImport(state: FleetState, pendingImport: PendingTelemetryImport): FleetState {
+  return { ...state, pendingImports: [pendingImport, ...state.pendingImports.filter((item) => item.id !== pendingImport.id)].slice(0, 50) };
 }

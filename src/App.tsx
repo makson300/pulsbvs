@@ -24,13 +24,16 @@ import { analyzeTelemetry, parseTelemetryCsv, parseTelemetryFile, type FlightAna
 import {
   createBatteryAsset,
   createDroneAsset,
+  createPendingImport,
   createSavedImport,
   loadFleetState,
   saveFleetState,
   upsertImport,
+  upsertPendingImport,
   type BatteryAsset,
   type DroneAsset,
   type FleetState,
+  type PendingTelemetryImport,
   type SavedTelemetryImport,
 } from './domain/fleet';
 
@@ -84,6 +87,39 @@ const capabilityText = {
 
 const sampleCsv = 'timestamp,latitude,longitude,battery_percent,pack_voltage,battery_temperature,cell1,cell2,cell3,cell4,warning\n2026-07-30T09:00:00Z,55.7512,37.6184,94,51.2,32,4.18,4.17,4.18,4.17,\n2026-07-30T09:03:00Z,55.7520,37.6201,86,49.8,36,4.08,4.06,4.08,4.07,voltage sag';
 const sampleKml = '<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2"><Document><Placemark><name>Пример маршрута</name><LineString><coordinates>37.6184,55.7512,180 37.6201,55.7520,182 37.6215,55.7531,181</coordinates></LineString></Placemark></Document></kml>';
+const sourceTemplate = `Карточка происхождения лога для Пульс БВС
+
+1. Аппарат
+Модель дрона:
+Бортовой номер / псевдоним без серийного номера:
+Модель пульта:
+Модель очков, если были:
+
+2. Источник файла
+Откуда выгружено: DJI Fly / телефон / пульт / DJI Assistant 2 / SmartFarm-KML / другое
+Точный путь или меню выгрузки:
+Исходное имя файла:
+Расширение файла:
+Дата и время копирования:
+
+3. Полёт
+Дата полёта:
+Примерная длительность:
+Сценарий: штатный / предупреждение / ошибка / тест
+Краткое описание события:
+
+4. Батарея
+ID батареи или псевдоним:
+Уровень заряда до полёта, если известен:
+Уровень заряда после полёта, если известен:
+Были ли предупреждения по батарее:
+
+5. Приватность
+Что обезличено:
+Есть ли чувствительные координаты: да / нет
+Можно ли использовать файл для разработки адаптера: да / нет / уточнить
+
+Важно: реальные оригиналы хранить вне Git. В сервис загружать рабочую копию.`;
 
 function loadUserProfile(): UserProfile {
   try {
@@ -139,6 +175,8 @@ function App() {
     setAnalysis(nextAnalysis);
     setFleetState((state) => {
       const saved = createSavedImport(nextAnalysis, state.selectedDroneId, state.selectedBatteryId);
+      const pending = createPendingImport(nextAnalysis, state.selectedDroneId, state.selectedBatteryId);
+      if (pending) return upsertPendingImport(state, pending);
       return saved ? upsertImport(state, saved) : state;
     });
     setSection(targetSection);
@@ -256,6 +294,7 @@ function App() {
           <FlightsView
             analysis={analysis}
             imports={fleetState.imports}
+            pendingImports={fleetState.pendingImports}
             drones={fleetState.drones}
             batteries={fleetState.batteries}
             onOpenImport={openSavedImport}
@@ -372,6 +411,12 @@ function PageHeader({ sectionTitle, sourceName, qualityScore }: { sectionTitle: 
 }
 
 function Landing({ setView, setModal, loadDemo }: { setView: (view: View) => void; setModal: (modal: ModalState) => void; loadDemo: (key: keyof typeof demoLogs) => void }) {
+  const landingStats = [
+    ['1 окно', 'флот, батареи, импорты и задачи ТО'],
+    ['до полёта', 'видны слабые места в данных и батарее'],
+    ['B2B', 'контроль доступа, приватность, on-prem контур'],
+  ];
+
   return (
     <main className="landing">
       <nav className="landing-nav">
@@ -384,33 +429,56 @@ function Landing({ setView, setModal, loadDemo }: { setView: (view: View) => voi
 
       <section className="hero">
         <div>
-          <p className="eyebrow">Предиктивная аналитика БВС</p>
-          <h1>Контроль батарей, полётов и ТО до того, как отказ станет аварией</h1>
-          <p>Пульс БВС помогает агроподрядчикам и fleet-менеджерам видеть риск деградации батарей, качество логов, состояние флота и задачи обслуживания в одном российском интерфейсе.</p>
+          <p className="eyebrow">Цифровой журнал эксплуатации БВС</p>
+          <h1>Флот, батареи и журналы полётов — в одном понятном контуре</h1>
+          <p>Пульс БВС помогает операторам и агроподрядчикам навести порядок в данных: привязать журналы к дронам и батареям, увидеть качество импорта, зафиксировать предупреждения и не потерять задачи обслуживания.</p>
           <div className="hero-actions">
-            <button className="landing-primary" onClick={() => setModal('auth')}>Получить пилотный доступ</button>
-            <button onClick={() => loadDemo('critical')}>Посмотреть критический алерт</button>
+            <button className="landing-primary" onClick={() => setModal('auth')}>Обсудить пилот</button>
+            <button onClick={() => setView('dashboard')}>Открыть демо-кабинет</button>
+            <button onClick={() => loadDemo('critical')}>Показать пример риска</button>
+          </div>
+          <div className="hero-proof">
+            {landingStats.map(([value, label]) => <span key={value}><b>{value}</b>{label}</span>)}
           </div>
         </div>
         <aside className="hero-card">
-          <span className="status-pill status-pill--warning">Предиктивный алерт</span>
-          <h2>BT-014: просадка выше нормы</h2>
-          <p>Разбаланс ячеек и ускоренный разряд требуют ограничения эксплуатации до диагностики.</p>
+          <div className="hero-card-top">
+            <span className="status-pill status-pill--warning">Пилотный контур</span>
+            <small>пример интерфейса</small>
+          </div>
+          <h2>Перед вылетом видно, чему можно доверять</h2>
+          <div className="signal-list">
+            <span><b>Качество данных</b><em>CSV/KML читается, DAT/ZIP требуют исследования</em></span>
+            <span><b>Батарея</b><em>просадка и разбаланс подсвечены как риск</em></span>
+            <span><b>ТО</b><em>задача не теряется после импорта журнала</em></span>
+          </div>
           <div className="quality-scale"><i style={{ width: '74%' }} /></div>
-          <small>Индекс батареи: 74/100</small>
+          <small>Индекс примера: 74/100 — не замена диагностике, а повод проверить батарею.</small>
         </aside>
       </section>
 
       <section className="landing-grid">
-        <LandingCard title="Боль рынка" items={['Батареи оцениваются на глаз', 'Логи разбираются уже после аварии', 'Нет общей картины по флоту и ТО']} />
-        <LandingCard title="Что даём" items={['Battery Health Score и Data Quality Score', 'Предиктивные алерты с объяснением', 'Журнал полётов, батарей и обслуживания']} />
-        <LandingCard title="Почему Russia-ready" items={['Email/web загрузка без Telegram', 'Подготовка к on-premise', 'Модель под B2B и коммерческую тайну']} />
+        <LandingCard kicker="01" title="Навести порядок" items={['Единый реестр дронов и батарей', 'История импортов привязана к активам', 'Понятно, какой файл дал какие выводы']} />
+        <LandingCard kicker="02" title="Снизить операционный риск" items={['Подсветка просадки, температуры и качества данных', 'Объяснение риска простым языком', 'ТО превращается в задачу, а не в заметку в чате']} />
+        <LandingCard kicker="03" title="Готовить B2B-контур" items={['Без Telegram как обязательного канала', 'Приватность журналов и коммерческой информации', 'Архитектура под backend, роли и on-prem']} />
+      </section>
+
+      <section className="workflow-section">
+        <div>
+          <p className="eyebrow">Логика работы</p>
+          <h2>От файла журнала до решения по эксплуатации</h2>
+        </div>
+        <div className="workflow-grid">
+          {['Загрузить журнал', 'Проверить качество данных', 'Связать с дроном и батареей', 'Получить риск и задачу ТО'].map((step, index) => (
+            <article className="workflow-step" key={step}><span>{index + 1}</span><strong>{step}</strong></article>
+          ))}
+        </div>
       </section>
 
       <section className="pricing-section">
-        <p className="eyebrow">Монетизация</p>
-        <h2>Платить нужно за флот под контролем, а не за каждую кнопку</h2>
-        <p>Основной тариф — по количеству активов: дроны и батареи. Лимит анализов нужен как честный технический ограничитель нагрузки.</p>
+        <p className="eyebrow">Коммерческая модель</p>
+        <h2>Тариф считается от масштаба флота, а не от сложности интерфейса</h2>
+        <p>Для пилота честнее считать дроны, батареи и объём импортов. Так владелец флота понимает стоимость контроля, а команда продукта не обещает неподтверждённую аналитику без реальных журналов.</p>
         <div className="pricing-grid">
           {pricing.map((plan) => (
             <article className="panel price-card" key={plan.name}>
@@ -427,8 +495,8 @@ function Landing({ setView, setModal, loadDemo }: { setView: (view: View) => voi
   );
 }
 
-function LandingCard({ title, items }: { title: string; items: string[] }) {
-  return <article className="panel landing-card"><h2>{title}</h2>{items.map((item) => <p key={item}><CheckCircle2 size={16} />{item}</p>)}</article>;
+function LandingCard({ kicker, title, items }: { kicker: string; title: string; items: string[] }) {
+  return <article className="panel landing-card"><span>{kicker}</span><h2>{title}</h2>{items.map((item) => <p key={item}><CheckCircle2 size={16} />{item}</p>)}</article>;
 }
 
 function Overview({
@@ -588,12 +656,13 @@ function Entity({ title, subtitle, tone, status, rows }: { title: string; subtit
   );
 }
 
-function FlightsView({ analysis, imports, drones, batteries, onOpenImport }: { analysis: FlightAnalysis; imports: SavedTelemetryImport[]; drones: DroneAsset[]; batteries: BatteryAsset[]; onOpenImport: (item: SavedTelemetryImport) => void }) {
+function FlightsView({ analysis, imports, pendingImports, drones, batteries, onOpenImport }: { analysis: FlightAnalysis; imports: SavedTelemetryImport[]; pendingImports: PendingTelemetryImport[]; drones: DroneAsset[]; batteries: BatteryAsset[]; onOpenImport: (item: SavedTelemetryImport) => void }) {
   return (
     <>
       <section className="analysis-grid"><QualityPanel analysis={analysis} /><ImportProfile analysis={analysis} /></section>
       <RecognizedData analysis={analysis} />
       <ImportHistory imports={imports} drones={drones} batteries={batteries} onOpenImport={onOpenImport} />
+      <PendingImportQueue pendingImports={pendingImports} drones={drones} batteries={batteries} />
       <List
         title="Последние демо-полёты"
         rows={flights.map((flight) => ({
@@ -605,6 +674,30 @@ function FlightsView({ analysis, imports, drones, batteries, onOpenImport }: { a
         }))}
       />
     </>
+  );
+}
+
+function PendingImportQueue({ pendingImports, drones, batteries }: { pendingImports: PendingTelemetryImport[]; drones: DroneAsset[]; batteries: BatteryAsset[] }) {
+  return (
+    <section className="panel list-panel pending-imports" data-testid="pending-imports">
+      <div className="panel-heading">
+        <div><p className="eyebrow">Очередь исследования</p><h2>Принятые файлы без аналитики</h2></div>
+        <span className="status-pill status-pill--warning">{pendingImports.length} файлов</span>
+      </div>
+      {pendingImports.length === 0 ? (
+        <p className="empty-state">DAT/ZIP/JSON и другие неподдержанные источники будут фиксироваться здесь: файл принят, но выводы по нему не строятся до подтверждённого декодера.</p>
+      ) : pendingImports.map((item) => {
+        const drone = drones.find((entry) => entry.id === item.droneId);
+        const battery = batteries.find((entry) => entry.id === item.batteryId);
+        return (
+          <div className="history-row pending-row" key={item.id}>
+            <span className="row-status row-status--warning"><CircleHelp size={17} /></span>
+            <div><strong>{item.sourceName}</strong><p>{drone?.name ?? 'Дрон не найден'} · {battery?.label ?? 'Батарея не найдена'} · {item.reason}</p><small>{item.nextStep}</small></div>
+            <time>{new Date(item.importedAt).toLocaleString('ru-RU')}</time>
+          </div>
+        );
+      })}
+    </section>
   );
 }
 
@@ -758,9 +851,35 @@ function Modal({ modal, setModal, fileInput, chooseFile, uploadedName, primaryAl
 }
 
 function UploadModal({ fileInput, chooseFile, uploadedName, loadDemo, fleetState, selectAssets }: Pick<ModalProps, 'fileInput' | 'chooseFile' | 'uploadedName' | 'loadDemo' | 'fleetState' | 'selectAssets'>) {
+  const intakeChecklist = [
+    'Сначала выберите дрон и батарею, даже если батарея пока неизвестна.',
+    'FlightRecord с телефона/пульта полезен для маршрута, времени и первичных событий.',
+    'DAT/ZIP/JSON фиксируются в очереди исследования и не превращаются в диагностику без декодера.',
+    'Реальные оригиналы храните вне Git; сюда загружайте рабочую копию.',
+  ];
+  const sourceGuide = [
+    { source: 'DJI Fly / телефон / пульт', gives: 'маршрут, время, высота/скорость и часть предупреждений, если они есть в FlightRecord', limit: 'обычно не хватает полной батарейной телеметрии, ячеек и сервисных событий' },
+    { source: 'DJI Assistant 2', gives: 'технический экспорт Flight Controller Data и более полный контекст состояния устройства', limit: 'формат всё равно проверяем на реальном образце; DAT/ZIP/JSON не декодируем наугад' },
+    { source: 'KML из SmartFarm/агроплатформы', gives: 'маршрут, геометрию задания и координаты облёта', limit: 'не показывает состояние батареи, ошибки аппарата и обслуживание' },
+  ];
+
   return (
     <>
-      <IconTitle icon={<CloudUpload />} title="Загрузите журнал полёта" eyebrow="Импорт телеметрии" text="Выбор актива только связывает файл с реестром: модельная диагностика ещё не подключена. CSV/TXT/KML сохраняются в историю. DAT/ZIP принимаются, но до подключения декодера не анализируются и не становятся полноценной записью." />
+      <IconTitle icon={<CloudUpload />} title="Загрузите журнал полёта" eyebrow="Импорт телеметрии" text="Выбор актива только связывает файл с реестром: модельная диагностика ещё не подключена. CSV/TXT/KML сохраняются в историю. DAT/ZIP/JSON принимаются, но до подключения декодера не анализируются и не становятся полноценной записью." />
+      <div className="source-guide">
+        <strong>Откуда брать логи и что они дают</strong>
+        {sourceGuide.map((item) => (
+          <article key={item.source}>
+            <b>{item.source}</b>
+            <span>Даёт: {item.gives}.</span>
+            <em>Ограничение: {item.limit}.</em>
+          </article>
+        ))}
+      </div>
+      <div className="intake-checklist">
+        <strong>Готовность к реальным логам</strong>
+        {intakeChecklist.map((item) => <span key={item}><CheckCircle2 size={14} />{item}</span>)}
+      </div>
       <div className="asset-picker">
         <label>Дрон
           <select value={fleetState.selectedDroneId} onChange={(event) => selectAssets(event.target.value, fleetState.selectedBatteryId)}>
@@ -773,12 +892,13 @@ function UploadModal({ fileInput, chooseFile, uploadedName, loadDemo, fleetState
           </select>
         </label>
       </div>
-      <input ref={fileInput} className="hidden-input" type="file" onChange={(event) => chooseFile(event.target.files?.[0])} accept=".csv,.txt,.dat,.kml,.zip" />
-      <button className="drop-zone" onClick={() => fileInput.current?.click()}><CloudUpload size={23} /><strong>Выбрать файл</strong><span>CSV, TXT, DAT, KML, ZIP</span></button>
+      <input ref={fileInput} className="hidden-input" type="file" onChange={(event) => chooseFile(event.target.files?.[0])} accept=".csv,.txt,.dat,.kml,.zip,.json" />
+      <button className="drop-zone" onClick={() => fileInput.current?.click()}><CloudUpload size={23} /><strong>Выбрать файл</strong><span>CSV, TXT, DAT, KML, ZIP, JSON</span></button>
       {uploadedName && <div className="upload-result"><ShieldCheck size={18} />Активный источник: «{uploadedName}».</div>}
       <div className="sample-actions">
         <button onClick={() => downloadSample('puls-bvs-sample.csv', sampleCsv, 'text/csv;charset=utf-8')}>Скачать пример CSV</button>
         <button onClick={() => downloadSample('puls-bvs-route.kml', sampleKml, 'application/vnd.google-earth.kml+xml;charset=utf-8')}>Скачать пример KML</button>
+        <button onClick={() => downloadSample('puls-bvs-source-template.txt', sourceTemplate, 'text/plain;charset=utf-8')}>Шаблон карточки лога</button>
       </div>
       <div className="demo-actions">
         <button onClick={() => loadDemo('normal')}>Демо норма</button>

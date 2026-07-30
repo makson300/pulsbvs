@@ -83,7 +83,7 @@ not-a-date,not-a-lat,37.61,unknown,voltage-hot,NaN,bad,cell`);
 
     expect(parsed.sourceKind).toBe('unsupported');
     expect(parsed.rows).toHaveLength(0);
-    expect(parsed.notice).toContain('декодер DAT/ZIP ещё не подключён');
+    expect(parsed.notice).toContain('декодер для этого формата ещё не подключён');
     expect(analysis.importProfile.title).toBe('Декодер ещё не подключён');
     expect(analysis.importProfile.capability).toBe('route_only');
     expect(analysis.summary.points).toBe(0);
@@ -97,5 +97,15 @@ not-a-date,not-a-lat,37.61,unknown,voltage-hot,NaN,bad,cell`);
     expect(parsed.detectedColumns).toEqual([]);
     expect(analysis.quality.score).toBe(0);
     expect(analysis.battery.alerts).toContainEqual(expect.objectContaining({ code: 'BATTERY_DATA_LIMITED' }));
+  });
+
+  it('keeps JSON exports in the research queue until a decoder is confirmed', () => {
+    const parsed = parseTelemetryFile('flight-record.json', '{"battery":90}');
+    const analysis = analyzeTelemetry(parsed);
+
+    expect(parsed.sourceKind).toBe('unsupported');
+    expect(parsed.detectedColumns).toEqual([]);
+    expect(analysis.importProfile.capability).toBe('route_only');
+    expect(analysis.summary.points).toBe(0);
   });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { analyzeTelemetry, parseTelemetryCsv, parseTelemetryFile } from '../analytics/telemetry';
-import { createDefaultFleetState, createSavedImport, loadFleetState, saveFleetState, upsertImport } from './fleet';
+import { createDefaultFleetState, createPendingImport, createSavedImport, loadFleetState, saveFleetState, upsertImport, upsertPendingImport } from './fleet';
 
 function memoryStorage(initial?: string) {
   const store = new Map<string, string>();
@@ -21,6 +21,7 @@ describe('fleet domain state', () => {
     expect(state.batteries[0].health).toBeNull();
     expect(state.batteries[0].cycles).toBeNull();
     expect(state.imports).toEqual([]);
+    expect(state.pendingImports).toEqual([]);
     expect(state.selectedDroneId).toBe(state.drones[0].id);
     expect(state.selectedBatteryId).toBe(state.batteries[0].id);
   });
@@ -48,5 +49,22 @@ describe('fleet domain state', () => {
     const analysis = analyzeTelemetry(parseTelemetryFile('raw.zip', 'binary'));
 
     expect(createSavedImport(analysis, state.selectedDroneId, state.selectedBatteryId)).toBeNull();
+  });
+
+  it('keeps unsupported DAT or ZIP imports in a research queue', () => {
+    const state = createDefaultFleetState();
+    const analysis = analyzeTelemetry(parseTelemetryFile('raw.zip', 'binary'));
+    const pending = createPendingImport(analysis, state.selectedDroneId, state.selectedBatteryId, new Date('2026-07-30T10:00:00Z'));
+
+    expect(pending).not.toBeNull();
+    const nextState = upsertPendingImport(state, pending!);
+    const storage = memoryStorage();
+    saveFleetState(nextState, storage);
+    const restored = loadFleetState(storage);
+
+    expect(restored.imports).toEqual([]);
+    expect(restored.pendingImports).toHaveLength(1);
+    expect(restored.pendingImports[0].sourceName).toBe('raw.zip');
+    expect(restored.pendingImports[0].reason).toContain('декодер для этого формата ещё не подключён');
   });
 });

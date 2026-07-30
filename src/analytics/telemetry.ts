@@ -124,14 +124,14 @@ export function parseTelemetryCsv(sourceName: string, content: string): ParsedTe
 
 export function parseTelemetryFile(sourceName: string, content: string): ParsedTelemetry {
   const lowerName = sourceName.toLowerCase();
-  if (lowerName.endsWith('.dat') || lowerName.endsWith('.zip')) {
+  if (lowerName.endsWith('.dat') || lowerName.endsWith('.zip') || lowerName.endsWith('.json')) {
     return {
       sourceName,
       sourceKind: 'unsupported',
       rows: [],
       detectedColumns: [],
       missingCoreFields: ['timestamp', 'batteryPercent', 'coordinates'],
-      notice: 'Файл принят, но декодер DAT/ZIP ещё не подключён. Аналитика по нему не выполняется, чтобы не показывать неподтверждённые выводы.',
+      notice: 'Файл принят, но декодер для этого формата ещё не подключён. Аналитика по нему не выполняется, чтобы не показывать неподтверждённые выводы.',
     };
   }
   if (lowerName.endsWith('.kml') || content.trimStart().startsWith('<?xml') || content.includes('<kml')) {
