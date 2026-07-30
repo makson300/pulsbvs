@@ -71,6 +71,15 @@ nav { display: grid; gap: 4px; }.nav-item { color: #90a8c7; display: flex; align
 .next-file strong, .next-file span { display: block; }
 .next-file strong { color: #dcecff; font-size: 11px; margin-bottom: 6px; }
 .next-file span { color: #93acca; font-size: 11px; line-height: 1.55; }
+.recognized-data { margin-top: 15px; }
+.recognized-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 16px; }
+.recognized-grid strong { display: block; color: #dcecff; font-size: 11px; margin-bottom: 9px; }
+.tag-cloud { display: flex; flex-wrap: wrap; gap: 7px; }
+.tag-cloud span { color: #a9c3df; background: #0d2547; border: 1px solid #1d4268; border-radius: 999px; padding: 6px 9px; font-size: 10px; }
+.tag-cloud--missing span { color: #ffc66d; background: #3f3317; border-color: #8a6520; }
+.tag-cloud--hint span { color: #9dccff; background: #102944; }
+.recognized-data p { color: #91abc8; font-size: 12px; line-height: 1.65; margin: 16px 0 0; }
+@media (max-width: 900px) { .recognized-grid { grid-template-columns: 1fr; } }
 
 .landing { min-height: 100vh; padding: 26px clamp(18px, 5vw, 72px) 60px; background: radial-gradient(circle at 85% 8%, rgba(62, 126, 220, .24), transparent 28rem), radial-gradient(circle at 10% 15%, rgba(92, 82, 210, .18), transparent 22rem), #071225; }
 .landing-nav { display: flex; align-items: center; justify-content: space-between; gap: 18px; max-width: 1180px; margin: 0 auto 70px; }
