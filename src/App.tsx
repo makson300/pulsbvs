@@ -874,9 +874,45 @@ function Modal({ modal, setModal, fileInput, chooseFile, uploadedName, primaryAl
         {modal === 'recommendation' && <IconTitle icon={<AlertTriangle />} title={primaryAlert?.title ?? 'Отклонений нет'} eyebrow="Рекомендация" text={primaryAlert?.recommendation ?? 'Продолжайте копить историю полётов и батарей.'} />}
         {modal === 'notifications' && <IconTitle icon={<Bell />} title="Уведомления" eyebrow="Пульс БВС" text="Здесь появятся push/email-алерты. Telegram не используем." />}
         {modal === 'settings' && <IconTitle icon={<Settings />} title="Настройки" eyebrow="Пульс БВС" text="Следующий этап: роли, пороги алертов, организация и лимиты анализов по тарифу." />}
-        {modal === 'help' && <IconTitle icon={<CircleHelp />} title="Помощь" eyebrow="Пульс БВС" text="Сейчас можно перейти с главной в кабинет, выбрать активы, загружать CSV/TXT/KML и открывать историю импортов." />}
+        {modal === 'help' && <HelpModal />}
       </section>
     </div>
+  );
+}
+
+function HelpModal() {
+  const steps = [
+    { title: '1. Сохраните оригинал вне Git', text: 'Создайте приватную папку, не кладите реальные логи, координаты, серийные номера и аккаунты в репозиторий.' },
+    { title: '2. Сделайте рабочую копию', text: 'Для загрузки используйте копию файла. Исходное имя, расширение и способ получения запишите в source.txt.' },
+    { title: '3. Выберите дрон и батарею', text: 'Даже если батарея неизвестна, задайте псевдоним: так история импорта останется прослеживаемой.' },
+    { title: '4. Загрузите файл и проверьте результат', text: 'CSV/TXT/KML дают ограниченный анализ, DAT/ZIP/JSON уходят в очередь исследования без диагностики.' },
+  ];
+  const fileTypes = [
+    { label: 'CSV/TXT', text: 'табличная телеметрия, если есть распознаваемые поля' },
+    { label: 'KML', text: 'маршрут и координаты, но не здоровье батареи' },
+    { label: 'DAT/ZIP/JSON', text: 'только регистрация в очереди исследования' },
+  ];
+
+  return (
+    <>
+      <IconTitle icon={<CircleHelp />} title="Как подготовить первый реальный лог" eyebrow="Помощь" text="Эта памятка нужна до появления backend и модельных адаптеров: она помогает загрузить файл безопасно и не получить ложную диагностику." />
+      <div className="help-steps">
+        {steps.map((step) => (
+          <article key={step.title}>
+            <strong>{step.title}</strong>
+            <p>{step.text}</p>
+          </article>
+        ))}
+      </div>
+      <div className="help-file-types">
+        <strong>Что произойдёт с файлом</strong>
+        {fileTypes.map((item) => <span key={item.label}><b>{item.label}</b>{item.text}</span>)}
+      </div>
+      <div className="help-warning">
+        <AlertTriangle size={16} />
+        <span>Адаптер, декодер и модельные пороги добавляются только после изучения реального обезличенного файла с заполненным source.txt.</span>
+      </div>
+    </>
   );
 }
 
