@@ -15,8 +15,11 @@ describe('fleet domain state', () => {
   it('loads a safe default fleet state when storage is empty', () => {
     const state = loadFleetState(memoryStorage());
 
-    expect(state.drones.length).toBeGreaterThan(0);
+    expect(state.drones.map((drone) => drone.model)).toEqual(['DJI Avata 2', 'DJI Avata 360', 'DJI Mini 4 Pro']);
+    expect(state.drones.every((drone) => drone.health === null && drone.flightHours === null)).toBe(true);
     expect(state.batteries.length).toBeGreaterThan(0);
+    expect(state.batteries[0].health).toBeNull();
+    expect(state.batteries[0].cycles).toBeNull();
     expect(state.imports).toEqual([]);
     expect(state.selectedDroneId).toBe(state.drones[0].id);
     expect(state.selectedBatteryId).toBe(state.batteries[0].id);

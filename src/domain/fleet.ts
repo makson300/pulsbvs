@@ -7,8 +7,8 @@ export interface DroneAsset {
   name: string;
   model: string;
   status: string;
-  health: number;
-  flightHours: string;
+  health: number | null;
+  flightHours: string | null;
   assignedBatteryId?: string;
   tone: AssetTone;
 }
@@ -16,8 +16,8 @@ export interface DroneAsset {
 export interface BatteryAsset {
   id: string;
   label: string;
-  health: number;
-  cycles: number;
+  health: number | null;
+  cycles: number | null;
   status: string;
   issue: string;
   tone: AssetTone;
@@ -50,17 +50,13 @@ export interface FleetState {
 export const FLEET_STORAGE_KEY = 'puls-bvs-fleet-state';
 
 export const defaultDrones: DroneAsset[] = [
-  { id: 'drone-t40-01', name: 'Agras T40 №01', model: 'DJI Agras T40', status: 'Готов', health: 96, flightHours: '42,1 ч', assignedBatteryId: 'BT-014', tone: 'good' },
-  { id: 'drone-t40-02', name: 'Agras T40 №02', model: 'DJI Agras T40', status: 'Ограничить', health: 78, flightHours: '38,4 ч', assignedBatteryId: 'BT-009', tone: 'warning' },
-  { id: 'drone-t40-03', name: 'Agras T40 №03', model: 'DJI Agras T40', status: 'На ТО', health: 61, flightHours: '51,8 ч', tone: 'critical' },
-  { id: 'drone-mini-01', name: 'Mini 4 Pro', model: 'DJI Mini 4 Pro', status: 'Тест логов', health: 93, flightHours: '6,2 ч', assignedBatteryId: 'INT-01', tone: 'good' },
+  { id: 'drone-avata-2', name: 'Avata 2', model: 'DJI Avata 2', status: 'Журнал не добавлен', health: null, flightHours: null, tone: 'warning' },
+  { id: 'drone-avata-360', name: 'Avata 360', model: 'DJI Avata 360', status: 'Журнал не добавлен', health: null, flightHours: null, tone: 'warning' },
+  { id: 'drone-mini-4-pro', name: 'Mini 4 Pro', model: 'DJI Mini 4 Pro', status: 'Журнал не добавлен', health: null, flightHours: null, tone: 'warning' },
 ];
 
 export const defaultBatteries: BatteryAsset[] = [
-  { id: 'BT-014', label: 'BT-014', health: 74, cycles: 86, status: 'Проверить', issue: 'Просадка напряжения выше нормы', tone: 'warning' },
-  { id: 'BT-009', label: 'BT-009', health: 88, cycles: 64, status: 'Готова', issue: 'Отклонений нет', tone: 'good' },
-  { id: 'BT-021', label: 'BT-021', health: 52, cycles: 112, status: 'Не использовать', issue: 'Разбаланс ячеек 0.11 В', tone: 'critical' },
-  { id: 'INT-01', label: 'INT-01', health: 93, cycles: 19, status: 'Тест', issue: 'Mini 4 Pro для проверки импорта', tone: 'good' },
+  { id: 'battery-not-specified', label: 'Батарея не указана', health: null, cycles: null, status: 'Добавьте батарею', issue: 'Циклы и состояние не подтверждены', tone: 'warning' },
 ];
 
 export function createDefaultFleetState(): FleetState {
@@ -97,16 +93,16 @@ export function saveFleetState(state: FleetState, storage: Pick<Storage, 'setIte
   storage.setItem(FLEET_STORAGE_KEY, JSON.stringify(state));
 }
 
-export function createDroneAsset(name: string, model = 'DJI Agras T40'): DroneAsset {
+export function createDroneAsset(name: string, model = 'DJI Mini 4 Pro'): DroneAsset {
   const safeName = name.trim() || `Дрон ${new Date().toLocaleTimeString('ru-RU')}`;
   return {
     id: `drone-${Date.now()}`,
     name: safeName,
-    model: model.trim() || 'DJI Agras T40',
-    status: 'Новый',
-    health: 100,
-    flightHours: '0 ч',
-    tone: 'good',
+    model: model.trim() || 'DJI Mini 4 Pro',
+    status: 'Журнал не добавлен',
+    health: null,
+    flightHours: null,
+    tone: 'warning',
   };
 }
 
@@ -115,11 +111,11 @@ export function createBatteryAsset(label: string): BatteryAsset {
   return {
     id: safeLabel,
     label: safeLabel,
-    health: 100,
-    cycles: 0,
-    status: 'Новая',
-    issue: 'История ещё не накоплена',
-    tone: 'good',
+    health: null,
+    cycles: null,
+    status: 'Журнал не добавлен',
+    issue: 'Циклы и состояние не подтверждены',
+    tone: 'warning',
   };
 }
 

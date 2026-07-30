@@ -165,9 +165,11 @@ function App() {
   }
 
   function addDrone() {
-    const name = prompt('Название дрона', `Agras T40 №${fleetState.drones.length + 1}`);
+    const name = prompt('Название дрона', `Дрон ${fleetState.drones.length + 1}`);
     if (name === null) return;
-    const drone = createDroneAsset(name);
+    const model = prompt('Модель дрона', 'DJI Mini 4 Pro');
+    if (model === null) return;
+    const drone = createDroneAsset(name, model);
     setFleetState((state) => ({ ...state, drones: [...state.drones, drone], selectedDroneId: drone.id }));
   }
 
@@ -456,7 +458,7 @@ function Overview({
       </section>
 
       <section className="dashboard-grid">
-        <FleetHealthCard />
+        <FleetHealthCard droneCount={droneCount} importCount={importCount} />
         <RiskCard primaryAlert={primaryAlert} openRecommendation={openRecommendation} />
         <FlightChart analysis={analysis} barValues={barValues} />
       </section>
@@ -478,22 +480,22 @@ function Overview({
   );
 }
 
-function FleetHealthCard() {
+function FleetHealthCard({ droneCount, importCount }: { droneCount: number; importCount: number }) {
   return (
     <article className="panel fleet-health">
       <div className="panel-heading"><div><p className="eyebrow">Техническое состояние</p><h2>Готовность флота</h2></div></div>
       <div className="readiness">
         <div className="gauge">
           <svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="48" /><circle className="gauge-value" cx="60" cy="60" r="48" /></svg>
-          <div><strong>75<span>%</span></strong><small>готовы</small></div>
+          <div><strong>—</strong><small>нет оценки</small></div>
         </div>
         <div className="readiness-list">
-          <div><span className="status-dot status-dot--good" />Готовы к вылету <b>6</b></div>
-          <div><span className="status-dot status-dot--attention" />С ограничениями <b>1</b></div>
-          <div><span className="status-dot status-dot--critical" />На обслуживании <b>1</b></div>
+          <div><span className="status-dot status-dot--good" />В реестре <b>{droneCount}</b></div>
+          <div><span className="status-dot status-dot--attention" />Сохранённых журналов <b>{importCount}</b></div>
+          <div><span className="status-dot status-dot--critical" />Оценка состояния <b>нет данных</b></div>
         </div>
       </div>
-      <div className="health-footer"><ShieldCheck size={18} /><span>Средний индекс здоровья флота</span><strong>91 / 100</strong></div>
+      <div className="health-footer"><ShieldCheck size={18} /><span>Индекс здоровья появится только по подтверждённым данным</span></div>
     </article>
   );
 }
@@ -541,8 +543,8 @@ function FleetView({ drones, batteries, onAddDrone }: { drones: DroneAsset[]; ba
             tone={drone.tone}
             status={drone.status}
             rows={[
-              ['Здоровье', `${drone.health}/100`],
-              ['Налёт', drone.flightHours],
+              ['Здоровье', drone.health === null ? 'Не оценено' : `${drone.health}/100`],
+              ['Налёт', drone.flightHours ?? 'Нет данных'],
               ['Батарея', batteries.find((battery) => battery.id === drone.assignedBatteryId)?.label ?? '—'],
             ]}
           />
@@ -565,8 +567,8 @@ function BatteriesView({ batteries, onAddBattery }: { batteries: BatteryAsset[];
             tone={battery.tone}
             status={battery.status}
             rows={[
-              ['Индекс', `${battery.health}/100`],
-              ['Циклы', String(battery.cycles)],
+              ['Индекс', battery.health === null ? 'Не оценён' : `${battery.health}/100`],
+              ['Циклы', battery.cycles === null ? 'Нет данных' : String(battery.cycles)],
               ['Причина', battery.issue],
             ]}
           />
@@ -758,7 +760,7 @@ function Modal({ modal, setModal, fileInput, chooseFile, uploadedName, primaryAl
 function UploadModal({ fileInput, chooseFile, uploadedName, loadDemo, fleetState, selectAssets }: Pick<ModalProps, 'fileInput' | 'chooseFile' | 'uploadedName' | 'loadDemo' | 'fleetState' | 'selectAssets'>) {
   return (
     <>
-      <IconTitle icon={<CloudUpload />} title="Загрузите журнал полёта" eyebrow="Импорт телеметрии" text="Выберите активы: CSV/TXT/KML сохраняются в историю. DAT/ZIP принимаются, но до подключения декодера не анализируются и не становятся полноценной записью." />
+      <IconTitle icon={<CloudUpload />} title="Загрузите журнал полёта" eyebrow="Импорт телеметрии" text="Выбор актива только связывает файл с реестром: модельная диагностика ещё не подключена. CSV/TXT/KML сохраняются в историю. DAT/ZIP принимаются, но до подключения декодера не анализируются и не становятся полноценной записью." />
       <div className="asset-picker">
         <label>Дрон
           <select value={fleetState.selectedDroneId} onChange={(event) => selectAssets(event.target.value, fleetState.selectedBatteryId)}>
