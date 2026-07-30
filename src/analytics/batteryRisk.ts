@@ -51,8 +51,8 @@ export function assessBattery(snapshot: BatterySnapshot): BatteryAssessment {
         code: 'BATTERY_DATA_LIMITED',
         severity: 'info',
         title: 'Недостаточно данных для оценки батареи',
-        detail: 'В этом файле есть маршрутная телеметрия, но нет параметров ячеек и батареи.',
-        recommendation: 'Загрузите расширенный экспорт с пульта или DJI Assistant 2 for MG.',
+        detail: 'В этом файле есть маршрут, но нет подробных данных по ячейкам и батарее.',
+        recommendation: 'Загрузите более подробный файл с пульта или сервисной программы DJI, если он доступен.',
       }],
     };
   }
@@ -68,7 +68,7 @@ export function assessBattery(snapshot: BatterySnapshot): BatteryAssessment {
     alerts.push({
       code: 'BATTERY_DEVICE_ERROR', severity: 'critical', title: 'Батарея сообщила об ошибке',
       detail: 'Контроллер батареи зафиксировал ошибку в логе.',
-      recommendation: 'Исключите батарею из эксплуатации до проверки авторизованным специалистом.',
+      recommendation: 'Не используйте батарею до проверки специалистом.',
     });
   }
   if (cellDeviation !== undefined && cellDeviation >= 0.1) {
@@ -76,7 +76,7 @@ export function assessBattery(snapshot: BatterySnapshot): BatteryAssessment {
     alerts.push({
       code: 'BATTERY_CELL_IMBALANCE', severity: 'critical', title: 'Критический разбаланс ячеек',
       detail: `Разница напряжений ячеек ${cellDeviation.toFixed(3)} В под нагрузкой.`,
-      recommendation: 'Не используйте батарею для рабочих вылетов; проведите диагностику.',
+      recommendation: 'Не используйте батарею для рабочих вылетов; отдайте её на проверку.',
     });
   } else if (cellDeviation !== undefined && cellDeviation >= 0.05) {
     score -= 18;
@@ -91,7 +91,7 @@ export function assessBattery(snapshot: BatterySnapshot): BatteryAssessment {
     alerts.push({
       code: 'BATTERY_OVERHEAT', severity: 'critical', title: 'Перегрев батареи',
       detail: `Температура батареи достигла ${snapshot.batteryTemperatureC} °C.`,
-      recommendation: 'Прекратите эксплуатацию, дайте батарее остыть и проверьте разъёмы и режим нагрузки.',
+      recommendation: 'Не используйте батарею, дайте ей остыть и проверьте разъёмы и нагрузку.',
     });
   } else if ((snapshot.batteryTemperatureC ?? 0) >= 45) {
     score -= 10;
@@ -105,7 +105,7 @@ export function assessBattery(snapshot: BatterySnapshot): BatteryAssessment {
     score -= 35;
     alerts.push({
       code: 'BATTERY_UNDERVOLTAGE', severity: 'critical', title: 'Критически низкое напряжение',
-      detail: `Напряжение пакета ${snapshot.packVoltage?.toFixed(1)} В ниже консервативного порога первичного triage.`,
+      detail: `Напряжение батареи ${snapshot.packVoltage?.toFixed(1)} В ниже осторожного порога первичной проверки.`,
       recommendation: 'Зафиксируйте событие и не используйте батарею повторно без осмотра.',
     });
   }

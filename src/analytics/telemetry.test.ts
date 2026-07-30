@@ -83,8 +83,8 @@ not-a-date,not-a-lat,37.61,unknown,voltage-hot,NaN,bad,cell`);
 
     expect(parsed.sourceKind).toBe('unsupported');
     expect(parsed.rows).toHaveLength(0);
-    expect(parsed.notice).toContain('автоматический разбор этого формата ещё не подключён');
-    expect(analysis.importProfile.title).toBe('Формат ждёт проверки');
+    expect(parsed.notice).toContain('этот тип файла пока не читается');
+    expect(analysis.importProfile.title).toBe('Тип файла ждёт проверки');
     expect(analysis.importProfile.capability).toBe('route_only');
     expect(analysis.summary.points).toBe(0);
   });

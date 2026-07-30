@@ -65,6 +65,6 @@ describe('fleet domain state', () => {
     expect(restored.imports).toEqual([]);
     expect(restored.pendingImports).toHaveLength(1);
     expect(restored.pendingImports[0].sourceName).toBe('raw.zip');
-    expect(restored.pendingImports[0].reason).toContain('автоматический разбор этого формата ещё не подключён');
+    expect(restored.pendingImports[0].reason).toContain('этот тип файла пока не читается');
   });
 });

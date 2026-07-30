@@ -131,7 +131,7 @@ export function parseTelemetryFile(sourceName: string, content: string): ParsedT
       rows: [],
       detectedColumns: [],
       missingCoreFields: ['timestamp', 'batteryPercent', 'coordinates'],
-      notice: 'Файл принят, но автоматический разбор этого формата ещё не подключён. Аналитика по нему не выполняется, чтобы не показывать неподтверждённые выводы.',
+      notice: 'Файл принят, но этот тип файла пока не читается. Выводы по нему не строятся, чтобы не показывать неподтверждённую информацию.',
     };
   }
   if (lowerName.endsWith('.kml') || content.trimStart().startsWith('<?xml') || content.includes('<kml')) {
@@ -170,7 +170,7 @@ export function evaluateDataQuality(parsed: ParsedTelemetry): DataQualityReport 
   const available = checks.filter(([, ok]) => ok).map(([label]) => label);
   const missing = checks.filter(([, ok]) => !ok).map(([label]) => label);
   const score = Math.round((available.length / checks.length) * 100);
-  return { score, level: score >= 75 ? 'высокое' : score >= 45 ? 'среднее' : 'низкое', available, missing, notes: parsed.rows.length < 20 ? ['Мало точек телеметрии: выводы предварительные.'] : [] };
+  return { score, level: score >= 75 ? 'высокое' : score >= 45 ? 'среднее' : 'низкое', available, missing, notes: parsed.rows.length < 20 ? ['Мало точек данных: выводы предварительные.'] : [] };
 }
 
 export function analyzeTelemetry(parsed: ParsedTelemetry): FlightAnalysis {
@@ -217,21 +217,21 @@ function buildImportProfile(parsed: ParsedTelemetry, quality: DataQualityReport)
   const hasCells = quality.available.includes('Напряжения ячеек');
   const hasBattery = quality.available.includes('Заряд батареи') || quality.available.includes('Напряжение пакета') || quality.available.includes('Температура батареи');
   if (hasCells) return {
-    title: 'Расширенная батарейная телеметрия',
+    title: 'Подробные данные по батарее',
     capability: 'battery_extended',
-    verdict: 'Можно оценивать разбаланс ячеек, перегрев, просадку напряжения и ускоренный разряд.',
+    verdict: 'Можно оценивать разницу по ячейкам, перегрев, просадку напряжения и быстрый разряд.',
     nextBestFile: 'Продолжайте копить историю по этой батарее: несколько полётов под похожей нагрузкой дадут персональную норму просадки.',
   };
   if (hasBattery) return {
-    title: 'Базовая батарейная телеметрия',
+    title: 'Базовые данные по батарее',
     capability: 'battery_basic',
-    verdict: 'Можно делать первичный скрининг батареи, но без ячеек точность ниже.',
-    nextBestFile: 'Для серьёзной диагностики нужен подтверждённый экспорт с напряжениями ячеек, температурой, ошибками батареи и нагрузкой.',
+    verdict: 'Можно сделать первичную проверку батареи, но без данных по ячейкам точность ниже.',
+    nextBestFile: 'Для более точной оценки нужен проверенный файл с напряжениями ячеек, температурой, ошибками батареи и нагрузкой.',
   };
   return {
-    title: parsed.sourceKind === 'kml' ? 'Маршрут KML / SmartFarm' : parsed.sourceKind === 'unsupported' ? 'Формат ждёт проверки' : 'Ограниченный источник',
+    title: parsed.sourceKind === 'kml' ? 'Маршрут KML' : parsed.sourceKind === 'unsupported' ? 'Тип файла ждёт проверки' : 'Мало данных в файле',
     capability: 'route_only',
     verdict: parsed.notice ?? 'Можно проверить маршрут и наличие координат, но нельзя честно оценить состояние батареи.',
-    nextBestFile: 'Загрузите CSV/TXT с батарейными полями или расширенный лог с пульта/обслуживания: voltage, battery_percent, temperature, cell1...cellN, warnings.',
+    nextBestFile: 'Загрузите CSV/TXT с данными по батарее или более подробный файл с пульта/обслуживания: напряжение, заряд, температура, ячейки и предупреждения.',
   };
 }

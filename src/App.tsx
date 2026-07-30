@@ -57,25 +57,25 @@ const navItems: NavItem[] = [
   { id: 'fleet', label: 'Флот', icon: Plane },
   { id: 'batteries', label: 'Батареи', icon: BatteryCharging },
   { id: 'flights', label: 'Полёты', icon: Activity },
-  { id: 'maintenance', label: 'Техническое обслуживание', icon: Wrench },
+  { id: 'maintenance', label: 'Обслуживание', icon: Wrench },
 ];
 
 const flights = [
-  { id: 'FL-2048', drone: 'DJI Avata 2', date: 'Сегодня 09:18', duration: '6 мин', result: 'warning', text: 'Демо-лог с базовой телеметрией' },
-  { id: 'FL-2047', drone: 'DJI Avata 360', date: 'Вчера 17:40', duration: '11 мин', result: 'ok', text: 'Маршрутный источник без батарейных выводов' },
-  { id: 'FL-2046', drone: 'DJI Mini 4 Pro', date: 'Вчера 12:05', duration: '18 мин', result: 'ok', text: 'Тестовый источник для парсера' },
+  { id: 'FL-2048', drone: 'DJI Avata 2', date: 'Сегодня 09:18', duration: '6 мин', result: 'warning', text: 'Пример файла с данными по батарее' },
+  { id: 'FL-2047', drone: 'DJI Avata 360', date: 'Вчера 17:40', duration: '11 мин', result: 'ok', text: 'Маршрут без данных по батарее' },
+  { id: 'FL-2046', drone: 'DJI Mini 4 Pro', date: 'Вчера 12:05', duration: '18 мин', result: 'ok', text: 'Тестовый файл для проверки загрузки' },
 ];
 
 const maintenance = [
-  { target: 'DJI Mini 4 Pro', type: 'Проверить source.txt для первого лога', due: 'Перед импортом', status: 'Открыто', tone: 'warning' },
-  { target: 'Батарея без серийного номера', type: 'Заполнить псевдоним и происхождение', due: 'До анализа', status: 'Ожидает', tone: 'warning' },
+  { target: 'DJI Mini 4 Pro', type: 'Заполнить заметку о первом файле', due: 'Перед загрузкой', status: 'Открыто', tone: 'warning' },
+  { target: 'Батарея без серийного номера', type: 'Дать понятное название и указать, откуда файл', due: 'До проверки', status: 'Ожидает', tone: 'warning' },
   { target: 'DJI Avata 2', type: 'Подготовить рабочую копию лога', due: 'После получения файла', status: 'Назначено', tone: 'ok' },
 ];
 
 const pricing = [
   { name: 'Старт', price: '4 900 ₽', assets: 'до 3 дронов', logs: '60 анализов/мес', note: 'для пилотов и малых подрядчиков' },
   { name: 'Флот', price: '14 900 ₽', assets: 'до 15 дронов', logs: '400 анализов/мес', note: 'для агроподрядчиков' },
-  { name: 'Enterprise', price: 'по договору', assets: '50+ дронов', logs: 'лимиты по SLA', note: 'роли, интеграции и локальное размещение' },
+  { name: 'Команда', price: 'по договору', assets: '50+ дронов', logs: 'объём по договорённости', note: 'доступ для сотрудников, уведомления и хранение по правилам компании' },
 ];
 
 const severityText = { info: 'Информация', warning: 'Внимание', critical: 'Критично' } as const;
@@ -89,14 +89,14 @@ const sampleCsv = 'timestamp,latitude,longitude,battery_percent,pack_voltage,bat
 const sampleKml = '<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2"><Document><Placemark><name>Пример маршрута</name><LineString><coordinates>37.6184,55.7512,180 37.6201,55.7520,182 37.6215,55.7531,181</coordinates></LineString></Placemark></Document></kml>';
 const sourceTemplate = `Карточка происхождения лога для Пульс БВС
 
-1. Аппарат
+1. Дрон
 Модель дрона:
-Бортовой номер / псевдоним без серийного номера:
+Бортовой номер или понятное название без серийного номера:
 Модель пульта:
 Модель очков, если были:
 
-2. Источник файла
-Откуда выгружено: DJI Fly / телефон / пульт / DJI Assistant 2 / SmartFarm-KML / другое
+2. Откуда взят файл
+Откуда выгружено: DJI Fly / телефон / пульт / DJI Assistant 2 / карта KML / другое
 Точный путь или меню выгрузки:
 Исходное имя файла:
 Расширение файла:
@@ -109,17 +109,17 @@ const sourceTemplate = `Карточка происхождения лога д�
 Краткое описание события:
 
 4. Батарея
-ID батареи или псевдоним:
+ID батареи или понятное название:
 Уровень заряда до полёта, если известен:
 Уровень заряда после полёта, если известен:
 Были ли предупреждения по батарее:
 
-5. Приватность
-Что обезличено:
+5. Личные и чувствительные данные
+Что удалено или скрыто:
 Есть ли чувствительные координаты: да / нет
-Можно ли использовать файл для проверки формата: да / нет / уточнить
+Можно ли использовать файл для проверки чтения данных: да / нет / уточнить
 
-Важно: исходный файл хранить у себя в приватной папке. В сервис загружать рабочую или обезличенную копию.`;
+Важно: исходный файл храните у себя в закрытой папке. В сервис загружайте рабочую копию без лишних чувствительных данных.`;
 
 function loadUserProfile(): UserProfile {
   try {
@@ -397,7 +397,7 @@ function PageHeader({ sectionTitle, sourceName, qualityScore }: { sectionTitle: 
       <div>
         <p className="eyebrow">Центр контроля флота</p>
         <h1>{sectionTitle}</h1>
-        <p className="page-subtitle">Активный источник: {sourceName}</p>
+        <p className="page-subtitle">Загруженный файл: {sourceName}</p>
       </div>
       <div className="system-status">
         <span />
@@ -412,9 +412,9 @@ function PageHeader({ sectionTitle, sourceName, qualityScore }: { sectionTitle: 
 
 function Landing({ setView, setModal, loadDemo }: { setView: (view: View) => void; setModal: (modal: ModalState) => void; loadDemo: (key: keyof typeof demoLogs) => void }) {
   const landingStats = [
-    ['1 окно', 'флот, батареи, импорты и задачи ТО'],
+    ['1 окно', 'дроны, батареи, файлы полётов и задачи'],
     ['до полёта', 'видны слабые места в данных и батарее'],
-    ['B2B', 'контроль доступа, приватность, локальное размещение'],
+    ['для команд', 'доступ для сотрудников и защита рабочих данных'],
   ];
 
   return (
@@ -429,9 +429,9 @@ function Landing({ setView, setModal, loadDemo }: { setView: (view: View) => voi
 
       <section className="hero">
         <div>
-          <p className="eyebrow">Цифровой журнал эксплуатации БВС</p>
-          <h1>Флот, батареи и журналы полётов — в одном понятном контуре</h1>
-          <p>Пульс БВС помогает операторам и агроподрядчикам навести порядок в данных: привязать журналы к дронам и батареям, увидеть качество импорта, зафиксировать предупреждения и не потерять задачи обслуживания.</p>
+          <p className="eyebrow">Журнал для дронов и батарей</p>
+          <h1>Дроны, батареи и файлы полётов — в одном понятном месте</h1>
+          <p>Пульс БВС помогает операторам и агроподрядчикам навести порядок: связать файлы полётов с нужным дроном и батареей, увидеть, каких данных хватает, зафиксировать предупреждения и не потерять задачи обслуживания.</p>
           <div className="hero-actions">
             <button className="landing-primary" onClick={() => setModal('auth')}>Обсудить пилот</button>
             <button onClick={() => setView('dashboard')}>Открыть демо-кабинет</button>
@@ -443,33 +443,33 @@ function Landing({ setView, setModal, loadDemo }: { setView: (view: View) => voi
         </div>
         <aside className="hero-card">
           <div className="hero-card-top">
-            <span className="status-pill status-pill--warning">Пилотный контур</span>
+            <span className="status-pill status-pill--warning">Пилотная версия</span>
             <small>пример интерфейса</small>
           </div>
           <h2>Перед вылетом видно, чему можно доверять</h2>
           <div className="signal-list">
-            <span><b>Качество данных</b><em>CSV/KML читается, DAT/ZIP требуют исследования</em></span>
-            <span><b>Батарея</b><em>просадка и разбаланс подсвечены как риск</em></span>
-            <span><b>ТО</b><em>задача не теряется после импорта журнала</em></span>
+            <span><b>Качество данных</b><em>CSV/KML читаются, DAT/ZIP пока только принимаются на проверку</em></span>
+            <span><b>Батарея</b><em>сильная просадка и разница по ячейкам подсвечиваются как риск</em></span>
+            <span><b>Обслуживание</b><em>задача не теряется после загрузки файла</em></span>
           </div>
           <div className="quality-scale"><i style={{ width: '74%' }} /></div>
-          <small>Индекс примера: 74/100 — не замена диагностике, а повод проверить батарею.</small>
+          <small>Индекс примера: 74/100 — не замена проверке специалистом, а повод проверить батарею.</small>
         </aside>
       </section>
 
       <section className="landing-grid">
-        <LandingCard kicker="01" title="Навести порядок" items={['Единый реестр дронов и батарей', 'История импортов привязана к активам', 'Понятно, какой файл дал какие выводы']} />
-        <LandingCard kicker="02" title="Снизить операционный риск" items={['Подсветка просадки, температуры и качества данных', 'Объяснение риска простым языком', 'ТО превращается в задачу, а не в заметку в чате']} />
-        <LandingCard kicker="03" title="Готовить B2B-контур" items={['Корпоративные каналы уведомлений', 'Приватность журналов и коммерческой информации', 'Готовность к ролям, интеграциям и локальному размещению']} />
+        <LandingCard kicker="01" title="Навести порядок" items={['Список дронов и батарей в одном месте', 'История загрузок связана с нужным дроном и батареей', 'Понятно, какой файл дал какие выводы']} />
+        <LandingCard kicker="02" title="Снизить риск перед вылетом" items={['Подсказки по просадке, температуре и полноте данных', 'Объяснение риска простым языком', 'Обслуживание превращается в задачу, а не в заметку в чате']} />
+        <LandingCard kicker="03" title="Готовить работу команды" items={['Уведомления для ответственных людей', 'Защита журналов и коммерческой информации', 'Готовность к разным правам доступа и правилам хранения']} />
       </section>
 
       <section className="workflow-section">
         <div>
           <p className="eyebrow">Логика работы</p>
-          <h2>От файла журнала до решения по эксплуатации</h2>
+          <h2>От файла полёта до понятного решения</h2>
         </div>
         <div className="workflow-grid">
-          {['Загрузить журнал', 'Проверить качество данных', 'Связать с дроном и батареей', 'Получить риск и задачу ТО'].map((step, index) => (
+            {['Загрузить файл полёта', 'Проверить, каких данных хватает', 'Связать с дроном и батареей', 'Получить риск и задачу обслуживания'].map((step, index) => (
             <article className="workflow-step" key={step}><span>{index + 1}</span><strong>{step}</strong></article>
           ))}
         </div>
@@ -477,8 +477,8 @@ function Landing({ setView, setModal, loadDemo }: { setView: (view: View) => voi
 
       <section className="pricing-section">
         <p className="eyebrow">Коммерческая модель</p>
-        <h2>Тариф считается от масштаба флота, а не от сложности интерфейса</h2>
-        <p>Для пилота честнее считать дроны, батареи и объём импортов. Так владелец флота понимает стоимость контроля, а команда продукта не обещает неподтверждённую аналитику без реальных журналов.</p>
+        <h2>Тариф считается от размера парка, а не от сложности экрана</h2>
+        <p>Для пилота честнее считать дроны, батареи и число загруженных файлов. Так владелец парка понимает стоимость контроля, а сервис не обещает выводы без реальных журналов.</p>
         <div className="pricing-grid">
           {pricing.map((plan) => (
             <article className="panel price-card" key={plan.name}>
@@ -519,10 +519,10 @@ function Overview({
   return (
     <>
       <section className="metric-grid">
-        <Metric icon={<Plane />} value={String(droneCount)} label="Дронов в парке" hint={`${importCount} импортов в истории`} tone="blue" />
+        <Metric icon={<Plane />} value={String(droneCount)} label="Дронов в парке" hint={`${importCount} загрузок в истории`} tone="blue" />
         <Metric icon={<BatteryCharging />} value={analysis.summary.batteryEnd !== null ? `${analysis.summary.batteryEnd}%` : '—'} label="Остаток батареи" hint="по последнему загруженному логу" tone="violet" />
-        <Metric icon={<AlertTriangle />} value={String(analysis.alerts.length)} label="Алертов в логе" hint={`качество данных: ${analysis.quality.score}%`} tone="amber" />
-        <Metric icon={<Gauge />} value="147,6 ч" label="Налёт за сезон" hint="демо-значение" tone="cyan" />
+        <Metric icon={<AlertTriangle />} value={String(analysis.alerts.length)} label="Предупреждений в файле" hint={`полнота данных: ${analysis.quality.score}%`} tone="amber" />
+        <Metric icon={<Gauge />} value="147,6 ч" label="Полётов за сезон" hint="пример для демо" tone="cyan" />
       </section>
 
       <section className="dashboard-grid">
@@ -534,14 +534,14 @@ function Overview({
       <section className="analysis-grid">
         <QualityPanel analysis={analysis} />
         <article className="panel demo-panel">
-          <p className="eyebrow">Тестовые сценарии</p>
-          <h2>Проверить аналитику без реальных DJI-логов</h2>
+          <p className="eyebrow">Примеры для проверки</p>
+          <h2>Посмотреть работу сервиса без реальных файлов DJI</h2>
           <div className="demo-actions">
             <button onClick={() => loadDemo('normal')}>Норма</button>
-            <button onClick={() => loadDemo('degraded')}>Деградация</button>
-            <button onClick={() => loadDemo('critical')}>Критика</button>
+            <button onClick={() => loadDemo('degraded')}>Есть ухудшение</button>
+            <button onClick={() => loadDemo('critical')}>Высокий риск</button>
           </div>
-          <p>Кнопки меняют реальные входные данные, пересчитывают алерты и сохраняют поддерживаемый импорт в историю.</p>
+          <p>Кнопки подставляют разные примеры файлов, пересчитывают предупреждения и сохраняют поддержанные загрузки в историю.</p>
         </article>
       </section>
       <PilotReadiness />
@@ -551,10 +551,10 @@ function Overview({
 
 function PilotReadiness() {
   const readinessItems = [
-    { status: 'done', title: 'Контур импорта готов', text: 'CSV/TXT/KML проходят через качество данных, историю и привязку к активам.' },
-    { status: 'done', title: 'Очередь исследования включена', text: 'DAT/ZIP/JSON принимаются без аналитики и не становятся полноценной историей.' },
-    { status: 'next', title: 'Нужен первый реальный лог', text: 'Исходный файл хранится у владельца, рабочая копия загружается вместе с source.txt.' },
-    { status: 'blocked', title: 'Формат ждёт проверки', text: 'Модельные правила и автоматический разбор добавляются только после изучения обезличенного файла.' },
+    { status: 'done', title: 'Загрузка базовых файлов готова', text: 'CSV/TXT/KML проверяются на полноту данных, сохраняются в историю и связываются с дроном и батареей.' },
+    { status: 'done', title: 'Сложные файлы принимаются на проверку', text: 'DAT/ZIP/JSON сохраняются отдельно: по ним пока не строятся выводы и история полёта.' },
+    { status: 'next', title: 'Нужен первый реальный файл', text: 'Оригинал остаётся у владельца, а рабочая копия загружается вместе с заметкой о происхождении файла.' },
+    { status: 'blocked', title: 'Чтение файла ждёт проверки', text: 'Правила оценки добавляются только после изучения реального файла без лишних чувствительных данных.' },
   ];
 
   return (
@@ -564,7 +564,7 @@ function PilotReadiness() {
           <p className="eyebrow">Готовность к пилоту</p>
           <h2>Что осталось до полноценной работы</h2>
         </div>
-        <span className="status-pill status-pill--warning">Ждём реальные логи</span>
+        <span className="status-pill status-pill--warning">Ждём реальные файлы</span>
       </div>
       <div className="readiness-steps">
         {readinessItems.map((item) => (
@@ -588,12 +588,12 @@ function FleetHealthCard({ droneCount, importCount }: { droneCount: number; impo
           <div><strong>—</strong><small>нет оценки</small></div>
         </div>
         <div className="readiness-list">
-          <div><span className="status-dot status-dot--good" />В реестре <b>{droneCount}</b></div>
-          <div><span className="status-dot status-dot--attention" />Сохранённых журналов <b>{importCount}</b></div>
+          <div><span className="status-dot status-dot--good" />В списке <b>{droneCount}</b></div>
+          <div><span className="status-dot status-dot--attention" />Сохранённых файлов <b>{importCount}</b></div>
           <div><span className="status-dot status-dot--critical" />Оценка состояния <b>нет данных</b></div>
         </div>
       </div>
-      <div className="health-footer"><ShieldCheck size={18} /><span>Индекс здоровья появится только по подтверждённым данным</span></div>
+      <div className="health-footer"><ShieldCheck size={18} /><span>Оценка состояния появится только по подтверждённым данным</span></div>
     </article>
   );
 }
@@ -605,9 +605,9 @@ function RiskCard({ primaryAlert, openRecommendation }: { primaryAlert: FlightAn
         <div className="risk-icon"><AlertTriangle size={22} /></div>
         <span className={`severity severity--${primaryAlert?.severity ?? 'info'}`}>{severityText[primaryAlert?.severity ?? 'info']}</span>
       </div>
-      <p className="eyebrow">Предиктивный алерт</p>
+      <p className="eyebrow">Предупреждение</p>
       <h2>{primaryAlert?.title ?? 'Отклонений не обнаружено'}</h2>
-      <p>{primaryAlert?.detail ?? 'Телеметрия находится в штатных пределах.'}</p>
+      <p>{primaryAlert?.detail ?? 'Данные полёта находятся в обычных пределах.'}</p>
       <button className="risk-action" onClick={openRecommendation}>Открыть рекомендации <ArrowUpRight size={16} /></button>
     </article>
   );
@@ -631,7 +631,7 @@ function FlightChart({ analysis, barValues }: { analysis: FlightAnalysis; barVal
 function FleetView({ drones, batteries, onAddDrone }: { drones: DroneAsset[]; batteries: BatteryAsset[]; onAddDrone: () => void }) {
   return (
     <>
-      <div className="section-actions"><button className="upload-button" onClick={onAddDrone}><Plane size={16} />Добавить дрон</button><span>В демо новые активы сохраняются в этом браузере.</span></div>
+        <div className="section-actions"><button className="upload-button" onClick={onAddDrone}><Plane size={16} />Добавить дрон</button><span>В демо новые дроны сохраняются в этом браузере.</span></div>
       <section className="table-grid">
         {drones.map((drone) => (
           <Entity
@@ -655,7 +655,7 @@ function FleetView({ drones, batteries, onAddDrone }: { drones: DroneAsset[]; ba
 function BatteriesView({ batteries, onAddBattery }: { batteries: BatteryAsset[]; onAddBattery: () => void }) {
   return (
     <>
-      <div className="section-actions"><button className="upload-button" onClick={onAddBattery}><BatteryCharging size={16} />Добавить батарею</button><span>Новые батареи доступны для привязки импорта.</span></div>
+      <div className="section-actions"><button className="upload-button" onClick={onAddBattery}><BatteryCharging size={16} />Добавить батарею</button><span>Новые батареи можно выбрать при загрузке файла.</span></div>
       <section className="table-grid">
         {batteries.map((battery) => (
           <Entity
@@ -715,7 +715,7 @@ function PendingImportQueue({ pendingImports, drones, batteries }: { pendingImpo
         <span className="status-pill status-pill--warning">{pendingImports.length} файлов</span>
       </div>
       {pendingImports.length === 0 ? (
-        <p className="empty-state">DAT/ZIP/JSON и другие неподдержанные источники будут фиксироваться здесь: файл принят, но выводы по нему не строятся до проверки формата.</p>
+        <p className="empty-state">DAT/ZIP/JSON и другие сложные файлы будут появляться здесь: файл принят, но выводы по нему не строятся до проверки чтения данных.</p>
       ) : pendingImports.map((item) => {
         const drone = drones.find((entry) => entry.id === item.droneId);
         const battery = batteries.find((entry) => entry.id === item.batteryId);
@@ -735,11 +735,11 @@ function ImportHistory({ imports, drones, batteries, onOpenImport }: { imports: 
   return (
     <section className="panel list-panel" data-testid="import-history">
       <div className="panel-heading">
-        <div><p className="eyebrow">История импортов</p><h2>Сохранённые анализы активов</h2></div>
+        <div><p className="eyebrow">История загрузок</p><h2>Сохранённые проверки по дронам и батареям</h2></div>
         <span className="status-pill status-pill--good">{imports.length} записей</span>
       </div>
       {imports.length === 0 ? (
-        <p className="empty-state">Загрузите CSV/TXT/KML или запустите демо-сценарий — поддерживаемый анализ сохранится здесь с выбранным дроном и батареей.</p>
+        <p className="empty-state">Загрузите CSV/TXT/KML или запустите демо-пример — поддержанная проверка сохранится здесь с выбранным дроном и батареей.</p>
       ) : imports.map((item) => {
         const drone = drones.find((entry) => entry.id === item.droneId);
         const battery = batteries.find((entry) => entry.id === item.batteryId);
@@ -764,7 +764,7 @@ function ImportProfile({ analysis }: { analysis: FlightAnalysis }) {
 
   return (
     <article className={`panel import-card import-card--${profile.capability}`}>
-      <div className="panel-heading"><div><p className="eyebrow">Паспорт импорта</p><h2>{profile.title}</h2></div><span className={`status-pill status-pill--${tone}`}>{sourceLabel}</span></div>
+      <div className="panel-heading"><div><p className="eyebrow">Карточка загрузки</p><h2>{profile.title}</h2></div><span className={`status-pill status-pill--${tone}`}>{sourceLabel}</span></div>
       <p>{profile.verdict}</p>
       <div className="entity-stats">
         <span>Файл <b>{analysis.parsed.sourceName}</b></span>
@@ -772,7 +772,7 @@ function ImportProfile({ analysis }: { analysis: FlightAnalysis }) {
         <span>Мин. напряжение <b>{analysis.summary.minVoltage?.toFixed(1) ?? '—'} В</b></span>
         <span>Макс. температура <b>{analysis.summary.maxBatteryTemp ?? '—'} °C</b></span>
       </div>
-      <div className="next-file"><strong>Следующий лучший файл</strong><span>{profile.nextBestFile}</span></div>
+      <div className="next-file"><strong>Какой файл лучше загрузить дальше</strong><span>{profile.nextBestFile}</span></div>
     </article>
   );
 }
@@ -787,15 +787,15 @@ function RecognizedData({ analysis }: { analysis: FlightAnalysis }) {
   return (
     <article className="panel recognized-data">
       <div className="panel-heading">
-        <div><p className="eyebrow">Распознанные данные</p><h2>Что найдено в журнале</h2></div>
+        <div><p className="eyebrow">Найденные данные</p><h2>Что найдено в журнале</h2></div>
         <span className={`status-pill status-pill--${analysis.importProfile.capability === 'route_only' ? 'critical' : 'good'}`}>{analysis.importProfile.capability === 'route_only' ? 'Батарея недоступна' : 'Можно анализировать'}</span>
       </div>
       <div className="recognized-grid">
-        <div><strong>Колонки источника</strong><div className="tag-cloud">{analysis.parsed.detectedColumns.length ? analysis.parsed.detectedColumns.map((column) => <span key={column}>{column}</span>) : <span>Колонки не распознаны</span>}</div></div>
-        <div><strong>Не хватает для диагностики</strong><div className="tag-cloud tag-cloud--missing">{missing.map((field) => <span key={field}>{field}</span>)}</div></div>
+        <div><strong>Найденные поля</strong><div className="tag-cloud">{analysis.parsed.detectedColumns.length ? analysis.parsed.detectedColumns.map((column) => <span key={column}>{column}</span>) : <span>Поля не распознаны</span>}</div></div>
+        <div><strong>Не хватает для оценки батареи</strong><div className="tag-cloud tag-cloud--missing">{missing.map((field) => <span key={field}>{field}</span>)}</div></div>
         <div><strong>Рекомендуемые CSV-поля</strong><div className="tag-cloud tag-cloud--hint">{criticalHints.map((field) => <span key={field}>{field}</span>)}</div></div>
       </div>
-      <p>{analysis.importProfile.capability === 'route_only' ? 'Этот файл пригоден для маршрута, но по нему нельзя честно оценить батарею: нет заряда, напряжения, температуры или ячеек.' : 'Чем больше батарейных полей есть в журнале, тем выше надёжность первичного triage и меньше ручных допущений.'}</p>
+      <p>{analysis.importProfile.capability === 'route_only' ? 'Этот файл пригоден для маршрута, но по нему нельзя честно оценить батарею: нет заряда, напряжения, температуры или ячеек.' : 'Чем больше данных по батарее есть в журнале, тем надёжнее первичная проверка и тем меньше догадок.'}</p>
     </article>
   );
 }
@@ -834,7 +834,7 @@ function List({ title, rows, action }: { title: string; rows: ListRow[]; action?
 function QualityPanel({ analysis }: { analysis: FlightAnalysis }) {
   return (
     <article className="panel quality-panel">
-      <div className="panel-heading"><div><p className="eyebrow">Data Quality Score</p><h2>Качество телеметрии</h2></div><strong className="quality-score">{analysis.quality.score}%</strong></div>
+      <div className="panel-heading"><div><p className="eyebrow">Полнота данных</p><h2>Каких данных хватает</h2></div><strong className="quality-score">{analysis.quality.score}%</strong></div>
       <div className="quality-scale"><i style={{ width: `${analysis.quality.score}%` }} /></div>
       <div className="quality-columns">
         <div><b>Есть</b>{analysis.quality.available.map((item) => <span key={item}>{item}</span>)}</div>
@@ -872,8 +872,8 @@ function Modal({ modal, setModal, fileInput, chooseFile, uploadedName, primaryAl
         {modal === 'auth' && <AuthModal user={user} setUser={setUser} loginDemo={loginDemo} />}
         {modal === 'lead' && <IconTitle icon={<Bell />} title="Заявка принята в демо-режиме" eyebrow="Пилот" text="В рабочей версии здесь будет форма заявки и уведомление ответственному специалисту." />}
         {modal === 'recommendation' && <IconTitle icon={<AlertTriangle />} title={primaryAlert?.title ?? 'Отклонений нет'} eyebrow="Рекомендация" text={primaryAlert?.recommendation ?? 'Продолжайте копить историю полётов и батарей.'} />}
-        {modal === 'notifications' && <IconTitle icon={<Bell />} title="Уведомления" eyebrow="Пульс БВС" text="Здесь появятся email, push и корпоративные webhook-уведомления по критичным событиям." />}
-        {modal === 'settings' && <IconTitle icon={<Settings />} title="Настройки" eyebrow="Пульс БВС" text="Следующий этап: роли, пороги алертов, организация и лимиты анализов по тарифу." />}
+        {modal === 'notifications' && <IconTitle icon={<Bell />} title="Уведомления" eyebrow="Пульс БВС" text="Здесь появятся письма и другие уведомления для ответственных людей по важным событиям." />}
+        {modal === 'settings' && <IconTitle icon={<Settings />} title="Настройки" eyebrow="Пульс БВС" text="Следующий этап: права доступа, правила предупреждений, данные организации и объём проверок по тарифу." />}
         {modal === 'help' && <HelpModal />}
       </section>
     </div>
@@ -882,20 +882,20 @@ function Modal({ modal, setModal, fileInput, chooseFile, uploadedName, primaryAl
 
 function HelpModal() {
   const steps = [
-    { title: '1. Сохраните исходный файл у себя', text: 'Не меняйте оригинал журнала и храните его в отдельной приватной папке вместе с заметкой о происхождении.' },
-    { title: '2. Подготовьте копию для загрузки', text: 'Если файл содержит чувствительные данные, используйте обезличенную копию. Исходное имя, расширение и способ получения запишите в source.txt.' },
-    { title: '3. Выберите дрон и батарею', text: 'Даже если батарея неизвестна, задайте псевдоним: так история импорта останется прослеживаемой.' },
-    { title: '4. Загрузите файл и проверьте результат', text: 'CSV/TXT/KML дают ограниченный анализ, DAT/ZIP/JSON уходят в очередь исследования без диагностики.' },
+    { title: '1. Сохраните исходный файл у себя', text: 'Не меняйте оригинал журнала и храните его в отдельной закрытой папке вместе с заметкой, откуда он взят.' },
+    { title: '2. Подготовьте копию для загрузки', text: 'Если в файле есть лишние чувствительные данные, загрузите рабочую копию без них. Имя файла, тип файла и способ получения запишите в карточке лога.' },
+    { title: '3. Выберите дрон и батарею', text: 'Даже если батарея неизвестна, дайте ей понятное временное название: так потом будет ясно, к чему относится файл.' },
+    { title: '4. Загрузите файл и проверьте результат', text: 'CSV/TXT/KML дают ограниченную проверку. DAT/ZIP/JSON только сохраняются на разбор и пока не дают выводов.' },
   ];
   const fileTypes = [
-    { label: 'CSV/TXT', text: 'табличная телеметрия, если есть распознаваемые поля' },
+    { label: 'CSV/TXT', text: 'таблица с данными полёта, если в ней есть понятные поля' },
     { label: 'KML', text: 'маршрут и координаты, но не здоровье батареи' },
-    { label: 'DAT/ZIP/JSON', text: 'только регистрация в очереди исследования' },
+    { label: 'DAT/ZIP/JSON', text: 'только сохранение на отдельную проверку' },
   ];
 
   return (
     <>
-      <IconTitle icon={<CircleHelp />} title="Как подготовить первый реальный лог" eyebrow="Помощь" text="Эта памятка помогает загрузить файл безопасно, сохранить происхождение данных и не получить ложную диагностику." />
+      <IconTitle icon={<CircleHelp />} title="Как подготовить первый реальный файл" eyebrow="Помощь" text="Эта памятка помогает безопасно загрузить файл, записать, откуда он взят, и не получить неподтверждённые выводы." />
       <div className="help-steps">
         {steps.map((step) => (
           <article key={step.title}>
@@ -910,7 +910,7 @@ function HelpModal() {
       </div>
       <div className="help-warning">
         <AlertTriangle size={16} />
-        <span>Автоматический разбор формата и модельные пороги добавляются только после изучения реального обезличенного файла с заполненным source.txt.</span>
+        <span>Новые правила чтения и оценки добавляются только после изучения реального файла без лишних чувствительных данных и с заполненной карточкой лога.</span>
       </div>
     </>
   );
@@ -919,21 +919,21 @@ function HelpModal() {
 function UploadModal({ fileInput, chooseFile, uploadedName, loadDemo, fleetState, selectAssets }: Pick<ModalProps, 'fileInput' | 'chooseFile' | 'uploadedName' | 'loadDemo' | 'fleetState' | 'selectAssets'>) {
   const intakeChecklist = [
     'Сначала выберите дрон и батарею, даже если батарея пока неизвестна.',
-    'FlightRecord с телефона/пульта полезен для маршрута, времени и первичных событий.',
-    'DAT/ZIP/JSON фиксируются в очереди исследования и не превращаются в диагностику без проверки формата.',
-    'Исходный файл храните у себя; сюда загружайте рабочую или обезличенную копию.',
+    'Файл из телефона или пульта полезен для маршрута, времени и части предупреждений.',
+    'DAT/ZIP/JSON сохраняются на отдельную проверку и не дают выводов, пока не подтверждено чтение данных.',
+    'Исходный файл храните у себя; сюда загружайте рабочую копию без лишних чувствительных данных.',
   ];
   const sourceGuide = [
-    { source: 'DJI Fly / телефон / пульт', gives: 'маршрут, время, высота/скорость и часть предупреждений, если они есть в FlightRecord', limit: 'обычно не хватает полной батарейной телеметрии, ячеек и сервисных событий' },
-    { source: 'DJI Assistant 2', gives: 'технический экспорт Flight Controller Data и более полный контекст состояния устройства', limit: 'формат всё равно проверяем на реальном образце; DAT/ZIP/JSON не разбираем наугад' },
-    { source: 'KML из SmartFarm/агроплатформы', gives: 'маршрут, геометрию задания и координаты облёта', limit: 'не показывает состояние батареи, ошибки аппарата и обслуживание' },
+    { source: 'DJI Fly / телефон / пульт', gives: 'маршрут, время, высоту, скорость и часть предупреждений, если они есть в файле', limit: 'обычно не хватает подробных данных по батарее, ячейкам и обслуживанию' },
+    { source: 'DJI Assistant 2', gives: 'более подробный файл о состоянии устройства', limit: 'его нужно проверить на реальном образце; DAT/ZIP/JSON не читаются наугад' },
+    { source: 'KML из карты или сервиса планирования', gives: 'маршрут и координаты облёта', limit: 'не показывает состояние батареи, ошибки дрона и обслуживание' },
   ];
 
   return (
     <>
-      <IconTitle icon={<CloudUpload />} title="Загрузите журнал полёта" eyebrow="Импорт телеметрии" text="Выбор актива только связывает файл с реестром: модельная диагностика ещё не подключена. CSV/TXT/KML сохраняются в историю. DAT/ZIP/JSON принимаются, но до проверки формата не анализируются и не становятся полноценной записью." />
+      <IconTitle icon={<CloudUpload />} title="Загрузите файл полёта" eyebrow="Загрузка данных" text="Выбор дрона и батареи только связывает файл с нужной записью. CSV/TXT/KML сохраняются в историю. DAT/ZIP/JSON принимаются, но до проверки чтения данных не анализируются и не становятся записью полёта." />
       <div className="source-guide">
-        <strong>Откуда брать логи и что они дают</strong>
+        <strong>Откуда брать файлы и что они дают</strong>
         {sourceGuide.map((item) => (
           <article key={item.source}>
             <b>{item.source}</b>
@@ -943,7 +943,7 @@ function UploadModal({ fileInput, chooseFile, uploadedName, loadDemo, fleetState
         ))}
       </div>
       <div className="intake-checklist">
-        <strong>Готовность к реальным логам</strong>
+        <strong>Готовность к реальным файлам</strong>
         {intakeChecklist.map((item) => <span key={item}><CheckCircle2 size={14} />{item}</span>)}
       </div>
       <div className="asset-picker">
@@ -960,7 +960,7 @@ function UploadModal({ fileInput, chooseFile, uploadedName, loadDemo, fleetState
       </div>
       <input ref={fileInput} className="hidden-input" type="file" onChange={(event) => chooseFile(event.target.files?.[0])} accept=".csv,.txt,.dat,.kml,.zip,.json" />
       <button className="drop-zone" onClick={() => fileInput.current?.click()}><CloudUpload size={23} /><strong>Выбрать файл</strong><span>CSV, TXT, DAT, KML, ZIP, JSON</span></button>
-      {uploadedName && <div className="upload-result"><ShieldCheck size={18} />Активный источник: «{uploadedName}».</div>}
+      {uploadedName && <div className="upload-result"><ShieldCheck size={18} />Загружен файл: «{uploadedName}».</div>}
       <div className="sample-actions">
         <button onClick={() => downloadSample('puls-bvs-sample.csv', sampleCsv, 'text/csv;charset=utf-8')}>Скачать пример CSV</button>
         <button onClick={() => downloadSample('puls-bvs-route.kml', sampleKml, 'application/vnd.google-earth.kml+xml;charset=utf-8')}>Скачать пример KML</button>
@@ -968,8 +968,8 @@ function UploadModal({ fileInput, chooseFile, uploadedName, loadDemo, fleetState
       </div>
       <div className="demo-actions">
         <button onClick={() => loadDemo('normal')}>Демо норма</button>
-        <button onClick={() => loadDemo('degraded')}>Демо деградация</button>
-        <button onClick={() => loadDemo('critical')}>Демо критика</button>
+        <button onClick={() => loadDemo('degraded')}>Демо ухудшение</button>
+        <button onClick={() => loadDemo('critical')}>Демо высокий риск</button>
       </div>
     </>
   );
@@ -978,7 +978,7 @@ function UploadModal({ fileInput, chooseFile, uploadedName, loadDemo, fleetState
 function AuthModal({ user, setUser, loginDemo }: Pick<ModalProps, 'user' | 'setUser' | 'loginDemo'>) {
   return (
     <>
-      <IconTitle icon={<ShieldCheck />} title="Демо-регистрация" eyebrow="Аккаунт" text="В демо данные аккаунта сохраняются только в этом браузере. Этого достаточно, чтобы проверить кабинет и сценарии импорта." />
+      <IconTitle icon={<ShieldCheck />} title="Демо-регистрация" eyebrow="Аккаунт" text="В демо данные аккаунта сохраняются только в этом браузере. Этого достаточно, чтобы проверить кабинет и загрузку файлов." />
       <input className="form-input" value={user.name} onChange={(event) => setUser({ ...user, name: event.target.value })} placeholder="Имя" />
       <input className="form-input" value={user.company} onChange={(event) => setUser({ ...user, company: event.target.value })} placeholder="Компания" />
       <input className="form-input" value={user.email} onChange={(event) => setUser({ ...user, email: event.target.value })} placeholder="Email" />
