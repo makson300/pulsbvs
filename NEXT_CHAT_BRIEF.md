@@ -1,6 +1,6 @@
 # Пульс БВС — инструкция для продолжения в новом чате
 
-Этот файл нужен, чтобы начать новый чат без потери направления разработки.
+Этот файл нужен, чтобы начать новый чат без потери направления разработки и не повторять уже закрытую работу.
 
 ## 1. Стартовый промпт для нового чата
 
@@ -15,11 +15,15 @@ c:/Users/Mvoro/OneDrive/Рабочий стол/KIMI CODE
 Сначала обязательно прочитай:
 - PROJECT_STATE.md
 - NEXT_CHAT_BRIEF.md
-- package.json
+- PRODUCT_ANALYSIS.md
 - README.md
+- package.json
 
 Затем проверь фактическое состояние:
 - git status --short --branch
+- git log --oneline -8
+
+Если планируешь менять код, после изменений запускай релевантные проверки:
 - npm test
 - npm run build
 - npm audit --omit=optional
@@ -27,14 +31,18 @@ c:/Users/Mvoro/OneDrive/Рабочий стол/KIMI CODE
 Отвечай всегда на русском языке.
 Telegram не использовать.
 Не выдумывай факты и не обещай аналитику, если данных недостаточно.
-Работай маленькими проверенными шагами: изменение → тесты/сборка → commit → push.
+DAT/ZIP не считать поддержанными для реальной аналитики/истории до подтверждённого декодера и схемы.
+Не вставляй токены/секреты в чат, код, конфиги или документацию.
+Закрывай цельные проверенные этапы/пункты, а не бесконечные микрошаги: inspect → change → validate → commit → push.
 
 Главная цель: довести «Пульс БВС» от рабочего frontend-демо до полезного продукта для контроля флота БВС и предиктивной диагностики, особенно для батарей и DJI Agras T40.
+
+Текущий следующий безопасный инкремент: Stage 3 preparation, но не implementation-first. Сначала подготовь API-контракты backend, ADR серверного стека и требования к реальным обезличенным журналам DJI Agras T40. Не начинай декодирование DAT/ZIP и не подключай BATTERY_DEVICE_ERROR к warning-строкам без подтверждённой схемы журнала.
 ```
 
 ## 2. Текущее состояние проекта
 
-Проект уже сохранён локально и на GitHub:
+Проект сохранён локально и на GitHub:
 
 ```text
 https://github.com/makson300/pulsbvs
@@ -46,6 +54,19 @@ https://github.com/makson300/pulsbvs
 main -> origin/main
 ```
 
+Последние подтверждённые коммиты перед memory-pass:
+
+```text
+735690b Track project Harvi skills
+9e76312 Refactor dashboard app structure
+bc4a4db Keep sidebar footer navigation visible
+e9fa66e Add fleet assets and import history
+3f7fb2f Restore sidebar footer navigation
+9de86a2 Revise product roadmap from AirData analysis
+47acd21 Handle unsupported DAT and ZIP imports
+7ae79fb Harden telemetry parsing for malformed inputs
+```
+
 Текущий стек:
 
 - Vite
@@ -53,7 +74,7 @@ main -> origin/main
 - TypeScript
 - Vitest
 - lucide-react
-- localStorage для демо-сессии
+- localStorage для демо-сессии/демо-активов/истории импортов
 
 Ключевые команды:
 
@@ -64,7 +85,16 @@ npm run build
 npm audit --omit=optional
 ```
 
-## 3. Что уже реализовано
+Dev server в момент memory-pass был активен как managed process `82`:
+
+```text
+npm run dev -- --host 127.0.0.1
+http://127.0.0.1:5173/
+```
+
+Если новый чат не видит этот процесс, не считать это ошибкой проекта: просто проверить URL или запустить dev server заново при необходимости.
+
+## 3. Что уже реализовано и не надо делать повторно
 
 - Landing page в тёмно-сапфировом стиле.
 - Демо-регистрация через `localStorage`.
@@ -74,10 +104,13 @@ npm audit --omit=optional
   - Батареи;
   - Полёты;
   - Техническое обслуживание.
-- Демо-активы дронов и батарей с добавлением новых записей через интерфейс.
+- Sidebar footer regression исправлена: `Главная`, `Настройки`, `Помощь` видимы снизу sidebar; есть `data-testid="sidebar-footer"`.
+- `src/App.tsx` после refactor pass всё ещё один файл, но структурирован на именованные компоненты: `Sidebar`, `Topbar`, `PageHeader`, `Landing`, `Overview`, `FleetHealthCard`, `RiskCard`, `FlightChart`, `FleetView`, `BatteriesView`, `FlightsView`, `ImportHistory`, `Modal`, `UploadModal`, `AuthModal` и др.
+- Демо-активы дронов и батарей вынесены в `src/domain/fleet.ts`.
+- В UI можно добавлять демо-дроны и демо-батареи; повторный ID батареи выбирает существующую запись вместо дубля.
 - Импорт CSV/TXT как табличной телеметрии.
 - Импорт KML как маршрутного источника.
-- DAT/ZIP принимаются с честным статусом: декодер ещё не подключён, аналитика не запускается.
+- DAT/ZIP принимаются с честным статусом: декодер ещё не подключён, аналитика не запускается, полноценная запись истории не создаётся.
 - Data Quality Score.
 - Паспорт импорта:
   - route-only;
@@ -89,16 +122,39 @@ npm audit --omit=optional
   - перегрев;
   - undervoltage ниже 47.6 В;
   - ускоренный разряд;
-  - ошибка батареи.
+  - ошибка батареи как правило в коде, но не подключать к реальным warning-строкам без схемы.
 - История поддерживаемых импортов в `localStorage`:
+  - ключ `puls-bvs-fleet-state`;
   - имя файла и время;
   - выбранный дрон и батарея;
   - профиль данных, качество, алерты и исходный результат анализа;
-  - открытие сохранённого анализа после перезагрузки.
+  - открытие сохранённого анализа после перезагрузки;
+  - есть `data-testid="import-history"`.
 - Тесты аналитики и доменной модели через Vitest:
-  - 15 тестов проходят.
+  - последний проверенный результат: 15 тестов проходят.
+- Проектные Harvi skills находятся в `.harvi/skills/**` и отслеживаются Git.
 
-## 4. Глобальная дорожная карта разработки
+## 4. Проверенное состояние перед handoff
+
+Последние функциональные проверки до memory-pass:
+
+```text
+npm test                 -> 15 passed
+npm run build            -> ✓ built
+npm audit --omit=optional -> found 0 vulnerabilities
+```
+
+Browser/Puppeteer smoke ранее подтвердил:
+
+- Stage 2 flow: импорт с выбранными `Agras T40 №02` + `BT-009` создаёт историю с `1 записей`.
+- Сохранённый анализ открывается после навигации/перезагрузки.
+- Добавление демо-дрона/батареи через UI работает.
+- Sidebar footer видим: `Главная`, `Настройки`, `Помощь`.
+- После refactor `App.tsx` чистый smoke подтвердил footer, историю импортов и связку активов.
+
+Memory-pass сам должен проверяться как docs-only change через `git diff --check`, `git status --short --branch`, commit и push.
+
+## 5. Глобальная дорожная карта разработки
 
 ### Этап 1. Импорт и объяснимость данных — завершён
 
@@ -106,7 +162,7 @@ npm audit --omit=optional
 
 ### Этап 2. Основание первого пилота: активы и история импортов — завершён в frontend-демо
 
-Реализованы доменные типы `DroneAsset`, `BatteryAsset`, `SavedTelemetryImport`, localStorage-хранилище `puls-bvs-fleet-state`, выбор дрона и батареи при импорте, добавление демо-дронов/батарей, история поддерживаемых импортов и открытие сохранённого анализа после перезагрузки.
+Реализованы доменные типы `DroneAsset`, `BatteryAsset`, `SavedTelemetryImport`, localStorage-хранилище `puls-bvs-fleet-state`, выбор дрона и батареи при импорте, добавление демо-дронов/батарей, история поддерживаемых импортов, открытие сохранённого анализа после перезагрузки, sidebar footer fix и структурный refactor `App.tsx`.
 
 Ограничения этапа: это локальный frontend-контур без backend/БД; DAT/ZIP не создают полноценную запись истории, пока нет подтверждённого декодера; API-контракты и ADR backend остаются подготовительным шагом перед production-контуром.
 
@@ -154,26 +210,29 @@ npm audit --omit=optional
 
 Подробный анализ AirData и основания этой последовательности: `PRODUCT_ANALYSIS.md`.
 
-## 5. Правила разработки
+## 6. Правила разработки
 
 1. Не делать большие переписывания без необходимости.
-2. Не имитировать реальную диагностику при нехватке данных.
-3. Любое изменение аналитики покрывать тестами.
-4. После значимых изменений запускать:
+2. Закрывать цельные этапы/пункты с проверкой, не возвращаться к пользователю после каждого мелкого шага.
+3. Не имитировать реальную диагностику при нехватке данных.
+4. Любое изменение аналитики покрывать тестами.
+5. Для UI/import изменений запускать browser smoke через Puppeteer, если dev server доступен.
+6. После значимых изменений запускать:
 
 ```bash
 npm test
 npm run build
 ```
 
-5. Перед push желательно запускать:
+7. Перед push по возможности запускать:
 
 ```bash
 npm audit --omit=optional
+git diff --check
 git status --short --branch
 ```
 
-6. После успешного шага:
+8. После успешного шага:
 
 ```bash
 git add .
@@ -181,15 +240,15 @@ git commit -m "краткое описание"
 git push
 ```
 
-## 6. Безопасность токенов и MCP
+## 7. Безопасность токенов и MCP
 
-GitHub MCP подключён через переменную окружения:
+GitHub MCP подключается через переменную окружения:
 
 ```text
 GITHUB_PERSONAL_ACCESS_TOKEN
 ```
 
-Нельзя вставлять токены в чат, код или JSON-конфиг.
+Нельзя вставлять токены в чат, код, документацию или JSON-конфиг.
 
 Если токен случайно попал в чат — считать его скомпрометированным и отозвать.
 
@@ -206,22 +265,86 @@ C:/Users/Mvoro/AppData/Roaming/Code/User/globalStorage/kristianshin.harvi-code/s
 - sequential-thinking;
 - github.
 
-## 7. Первый рекомендуемый шаг в новом чате
+Не подключены пока:
 
-Начать с перехода от локального демо-контура к достоверному пилоту T40.
+- Brave Search MCP — нужен API-ключ;
+- Postgres MCP — будет нужен после появления backend/БД.
 
-**Минимальный полезный инкремент: контракт T40 и backend-ADR без преждевременного микросервиса.**
+`.harvi/skills/**` теперь отслеживается Git. Остальные `.harvi/*` остаются ignored. Если новый чат не видит все project skills сразу, проверить файлы в `.harvi/skills/` и при необходимости перезапустить/перечитать проектный контекст.
 
-1. Описать API-контракты будущего backend для `organization`, `user`, `drone`, `battery`, `telemetry_import`, `flight`, `risk_alert`, `maintenance_task` на основе уже работающего localStorage-контура.
-2. Подготовить короткий ADR по backend-стеку: PostgreSQL, Node/Fastify или NestJS, ORM, требования on-prem и хранение оригиналов логов.
-3. Сформулировать требования к реальным обезличенным журналам DJI Agras T40: происхождение, версия ПО, единицы измерения, доступные поля, допустимые фикстуры.
-4. Не подключать DAT/ZIP-декодер и `BATTERY_DEVICE_ERROR` по warning-строкам до подтверждённой схемы реального журнала.
-5. После изменений выполнить:
+## 8. Project skills, которые стоит использовать
+
+В новом чате доступны или должны быть доступны из `.harvi/skills/**`:
+
+- `puls-bvs-adapter-designer` — проектирование адаптера DJI Agras T40 без неподтверждённых допущений.
+- `puls-bvs-backend-contract-designer` — API contracts для активов, импортов, телеметрии, алертов и ТО.
+- `puls-bvs-architecture-reviewer` — контроль разделения UI/domain/analytics/storage/API.
+- `puls-bvs-browser-smoke-runner` — практический Puppeteer smoke после UI/import изменений.
+- `puls-bvs-context-memory-keeper` — обновление памяти и инструкции перед переполнением контекста.
+- `puls-bvs-docs-keeper` — синхронизация README/PROJECT_STATE/NEXT_CHAT_BRIEF/PRODUCT_ANALYSIS.
+- `puls-bvs-frontend-guardian` — UI-регрессии, sidebar footer, upload modal, import history.
+- `puls-bvs-import-pipeline-auditor` — аудит импорта от файла до истории/алертов/ограничений.
+- `puls-bvs-product-analyst` — продуктовые ограничения и запрет обещаний без данных.
+- `puls-bvs-real-log-researcher` — исследование реальных DJI Agras T40 логов.
+- `puls-bvs-release-runner` — test/build/audit/browser smoke/diff/docs/commit/push.
+- `puls-bvs-security-privacy-guardian` — секреты, privacy логов, token policy, localStorage.
+- `puls-bvs-storage-guardian` — localStorage и будущий переход к backend persistence.
+- Дополнительные skills в Git могут включать data integrity, roadmap, git safety, test architecture и UI regression.
+
+## 9. Первый рекомендуемый шаг в новом чате
+
+Начать с перехода от локального демо-контура к достоверному пилоту T40, но не писать backend наугад.
+
+**Минимальный полезный инкремент: API contracts + backend ADR + требования к реальным T40 логам.**
+
+Рекомендуемый порядок:
+
+1. Загрузить/использовать skill `puls-bvs-backend-contract-designer` и при необходимости `puls-bvs-adapter-designer`/`puls-bvs-product-analyst`.
+2. Описать API-контракты будущего backend для:
+   - `organization`;
+   - `user`;
+   - `drone`;
+   - `battery`;
+   - `telemetry_import`;
+   - `flight`;
+   - `risk_alert`;
+   - `maintenance_task`.
+3. Основываться на текущей localStorage-модели:
+   - `DroneAsset`;
+   - `BatteryAsset`;
+   - `SavedTelemetryImport`;
+   - `FleetState`;
+   - `createSavedImport`/`upsertImport`.
+4. Подготовить короткий ADR по backend-стеку:
+   - единый Node backend, без преждевременных микросервисов;
+   - PostgreSQL;
+   - ORM/миграции;
+   - хранение оригиналов логов;
+   - on-prem требования;
+   - аудит и политика хранения.
+5. Сформулировать требования к реальным обезличенным журналам DJI Agras T40:
+   - происхождение файла;
+   - версия ПО/пульта/дрона при наличии;
+   - единицы измерения;
+   - доступные поля;
+   - серийные номера/идентификаторы должны быть обезличены;
+   - допустимые фикстуры для тестов.
+6. Не подключать DAT/ZIP-декодер и `BATTERY_DEVICE_ERROR` по warning-строкам до подтверждённой схемы реального журнала.
+7. После документов/кода выполнить релевантные проверки:
 
    ```bash
    npm test
    npm run build
    npm audit --omit=optional
+   git diff --check
+   git status --short --branch
    ```
 
-6. Проверить `git diff`, сделать commit и push.
+8. Проверить diff, сделать commit и push.
+
+## 10. Если новый чат начинается после этого memory-pass
+
+1. Проверить, что последний commit/push с сообщением вроде `Update handoff memory for next chat` присутствует в `git log --oneline -5`.
+2. Если commit есть — не переписывать memory docs снова без причины.
+3. Если commit отсутствует — сначала завершить memory-pass: проверить docs diff, `git diff --check`, commit и push.
+4. После этого лучше начать Stage 3 preparation в новом отдельном цикле, чтобы не потерять контекст.
