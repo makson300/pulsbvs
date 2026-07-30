@@ -41,4 +41,39 @@ describe('telemetry parsing and analysis', () => {
     expect(analysis.quality.available).toContain('Заряд батареи');
     expect(analysis.quality.missing).toContain('Напряжения ячеек');
   });
+
+  it('treats empty CSV as an unknown limited source', () => {
+    const parsed = parseTelemetryCsv('empty.csv', '');
+    const analysis = analyzeTelemetry(parsed);
+
+    expect(parsed.sourceKind).toBe('unknown');
+    expect(parsed.rows).toHaveLength(0);
+    expect(parsed.missingCoreFields).toEqual(['timestamp', 'batteryPercent', 'coordinates']);
+    expect(analysis.importProfile.capability).toBe('route_only');
+    expect(analysis.quality.score).toBe(0);
+    expect(analysis.battery.alerts).toContainEqual(expect.objectContaining({ code: 'BATTERY_DATA_LIMITED' }));
+  });
+
+  it('does not invent battery diagnostics for malformed CSV values', () => {
+    const parsed = parseTelemetryCsv('broken.csv', `timestamp,latitude,longitude,battery_percent,pack_voltage,battery_temperature,cell1,cell2
+not-a-date,not-a-lat,37.61,unknown,voltage-hot,NaN,bad,cell`);
+    const analysis = analyzeTelemetry(parsed);
+
+    expect(parsed.sourceKind).toBe('csv');
+    expect(parsed.rows).toEqual([expect.objectContaining({ timestamp: 'not-a-date', longitude: 37.61 })]);
+    expect(analysis.importProfile.capability).toBe('route_only');
+    expect(analysis.quality.available).not.toContain('Заряд батареи');
+    expect(analysis.summary.minVoltage).toBeNull();
+  });
+
+  it('keeps malformed KML as route-only telemetry with no fake points', () => {
+    const parsed = parseTelemetryFile('broken.kml', '<kml><coordinates>not-a-coordinate</coordinates></kml>');
+    const analysis = analyzeTelemetry(parsed);
+
+    expect(parsed.sourceKind).toBe('kml');
+    expect(parsed.rows).toHaveLength(0);
+    expect(parsed.detectedColumns).toEqual([]);
+    expect(analysis.importProfile.capability).toBe('route_only');
+    expect(analysis.quality.score).toBe(0);
+  });
 });

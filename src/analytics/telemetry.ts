@@ -70,7 +70,9 @@ const aliases: Record<FieldKey, string[]> = {
 const normalize = (value: string) => value.trim().toLowerCase().replace(/[\s_\-()[\]]+/g, '');
 const toNumber = (value: string | undefined) => {
   if (!value) return undefined;
-  const parsed = Number(value.replace(',', '.').replace(/[^\d.+-]/g, ''));
+  const numeric = value.replace(',', '.').replace(/[^\d.+-]/g, '');
+  if (!numeric) return undefined;
+  const parsed = Number(numeric);
   return Number.isFinite(parsed) ? parsed : undefined;
 };
 
