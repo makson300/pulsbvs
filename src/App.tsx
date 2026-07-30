@@ -283,9 +283,11 @@ function App() {
             barValues={barValues}
             primaryAlert={primaryAlert}
             openRecommendation={() => setModal('recommendation')}
+            openUpload={() => setModal('upload')}
             loadDemo={loadDemo}
             droneCount={fleetState.drones.length}
             importCount={fleetState.imports.length}
+            pendingCount={fleetState.pendingImports.length}
           />
         )}
         {section === 'fleet' && <FleetView drones={fleetState.drones} batteries={fleetState.batteries} onAddDrone={addDrone} />}
@@ -504,17 +506,21 @@ function Overview({
   barValues,
   primaryAlert,
   openRecommendation,
+  openUpload,
   loadDemo,
   droneCount,
   importCount,
+  pendingCount,
 }: {
   analysis: FlightAnalysis;
   barValues: number[];
   primaryAlert: FlightAnalysis['alerts'][number] | undefined;
   openRecommendation: () => void;
+  openUpload: () => void;
   loadDemo: (key: keyof typeof demoLogs) => void;
   droneCount: number;
   importCount: number;
+  pendingCount: number;
 }) {
   return (
     <>
@@ -545,7 +551,42 @@ function Overview({
         </article>
       </section>
       <PilotReadiness />
+      <FirstRealFileGuide openUpload={openUpload} pendingCount={pendingCount} />
     </>
+  );
+}
+
+function FirstRealFileGuide({ openUpload, pendingCount }: { openUpload: () => void; pendingCount: number }) {
+  const steps = [
+    ['1', 'Сохраните оригинал у себя', 'Не меняйте исходный файл. Держите его в закрытой папке на случай повторной проверки.'],
+    ['2', 'Заполните карточку файла', 'Укажите модель дрона, откуда взят файл, дату полёта и что скрыто из чувствительных данных.'],
+    ['3', 'Загрузите рабочую копию', 'CSV/TXT/KML дадут ограниченную проверку. DAT/ZIP/JSON будут сохранены отдельно до проверки чтения данных.'],
+  ];
+
+  return (
+    <section className="panel first-file-card">
+      <div className="panel-heading">
+        <div>
+          <p className="eyebrow">Первый реальный файл</p>
+          <h2>Безопасная приёмка файла от пилота</h2>
+        </div>
+        <span className="status-pill status-pill--warning">{pendingCount ? `${pendingCount} ждёт проверки` : 'готово к загрузке'}</span>
+      </div>
+      <p>Этот сценарий нужен, чтобы не потерять происхождение файла и не показать выводы там, где данных пока недостаточно.</p>
+      <div className="first-file-steps">
+        {steps.map(([number, title, text]) => (
+          <article key={title}>
+            <span>{number}</span>
+            <strong>{title}</strong>
+            <p>{text}</p>
+          </article>
+        ))}
+      </div>
+      <div className="first-file-actions">
+        <button className="upload-button" onClick={openUpload}><CloudUpload size={16} />Загрузить первый файл</button>
+        <button onClick={() => downloadSample('puls-bvs-source-template.txt', sourceTemplate, 'text/plain;charset=utf-8')}>Скачать карточку файла</button>
+      </div>
+    </section>
   );
 }
 
@@ -711,8 +752,12 @@ function PendingImportQueue({ pendingImports, drones, batteries }: { pendingImpo
   return (
     <section className="panel list-panel pending-imports" data-testid="pending-imports">
       <div className="panel-heading">
-        <div><p className="eyebrow">Очередь исследования</p><h2>Принятые файлы без аналитики</h2></div>
+        <div><p className="eyebrow">Файлы на проверке</p><h2>Принятые сложные файлы</h2></div>
         <span className="status-pill status-pill--warning">{pendingImports.length} файлов</span>
+      </div>
+      <div className="pending-note">
+        <AlertTriangle size={16} />
+        <span>Это не ошибка загрузки. Файл сохранён в списке, но выводы появятся только после проверки, какие данные из него можно читать.</span>
       </div>
       {pendingImports.length === 0 ? (
         <p className="empty-state">DAT/ZIP/JSON и другие сложные файлы будут появляться здесь: файл принят, но выводы по нему не строятся до проверки чтения данных.</p>
@@ -722,7 +767,12 @@ function PendingImportQueue({ pendingImports, drones, batteries }: { pendingImpo
         return (
           <div className="history-row pending-row" key={item.id}>
             <span className="row-status row-status--warning"><CircleHelp size={17} /></span>
-            <div><strong>{item.sourceName}</strong><p>{drone?.name ?? 'Дрон не найден'} · {battery?.label ?? 'Батарея не найдена'} · {item.reason}</p><small>{item.nextStep}</small></div>
+            <div>
+              <strong>{item.sourceName}</strong>
+              <p>{drone?.name ?? 'Дрон не найден'} · {battery?.label ?? 'Батарея не найдена'} · ждёт проверки чтения данных</p>
+              <small>{item.reason}</small>
+              <small>{item.nextStep}</small>
+            </div>
             <time>{new Date(item.importedAt).toLocaleString('ru-RU')}</time>
           </div>
         );
