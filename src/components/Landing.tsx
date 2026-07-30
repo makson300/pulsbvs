@@ -26,7 +26,7 @@ export function Landing({ setView, setModal, loadDemo }: LandingProps) {
       <nav className="landing-nav">
         <div className="brand"><span className="brand-mark"><Activity size={20} /></span><span>ПУЛЬС <b>БВС</b></span></div>
         <div>
-          <button onClick={() => setView('dashboard')}>Демо-кабинет</button>
+          <button data-testid="open-demo-dashboard" onClick={() => setView('dashboard')}>Демо-кабинет</button>
           <button className="landing-primary" onClick={() => setModal('auth')}>Создать аккаунт</button>
         </div>
       </nav>
@@ -38,7 +38,7 @@ export function Landing({ setView, setModal, loadDemo }: LandingProps) {
           <p>Пульс БВС помогает операторам и агроподрядчикам навести порядок: связать файлы полётов с нужным дроном и батареей, увидеть, каких данных хватает, зафиксировать предупреждения и не потерять задачи обслуживания.</p>
           <div className="hero-actions">
             <button className="landing-primary" onClick={() => setModal('auth')}>Обсудить пилот</button>
-            <button onClick={() => setView('dashboard')}>Открыть демо-кабинет</button>
+            <button data-testid="open-demo-dashboard-hero" onClick={() => setView('dashboard')}>Открыть демо-кабинет</button>
             <button onClick={() => loadDemo('critical')}>Показать пример риска</button>
           </div>
           <div className="hero-proof">

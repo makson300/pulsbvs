@@ -37,7 +37,7 @@ export function Sidebar({
 
       <nav aria-label="Разделы кабинета">
         {navItems.map(({ id, label, icon: Icon }) => (
-          <button className={`nav-item ${activeSection === id ? 'nav-item--active' : ''}`} key={id} onClick={() => onSectionChange(id)}>
+          <button className={`nav-item ${activeSection === id ? 'nav-item--active' : ''}`} data-testid={`nav-${id}`} key={id} onClick={() => onSectionChange(id)}>
             <Icon size={19} />
             <span>{label}</span>
           </button>
@@ -45,9 +45,9 @@ export function Sidebar({
       </nav>
 
       <div className="sidebar-bottom" data-testid="sidebar-footer">
-        <button className="nav-item" onClick={onHome}><ArrowUpRight size={19} /><span>Главная</span></button>
-        <button className="nav-item" onClick={onSettings}><Settings size={19} /><span>Настройки</span></button>
-        <button className="nav-item" onClick={onHelp}><CircleHelp size={19} /><span>Помощь</span></button>
+        <button className="nav-item" data-testid="nav-home" onClick={onHome}><ArrowUpRight size={19} /><span>Главная</span></button>
+        <button className="nav-item" data-testid="open-settings" onClick={onSettings}><Settings size={19} /><span>Настройки</span></button>
+        <button className="nav-item" data-testid="open-help" onClick={onHelp}><CircleHelp size={19} /><span>Помощь</span></button>
         <div className="profile">
           <span className="avatar avatar--blue">{user.name.slice(0, 2).toUpperCase()}</span>
           <div>
@@ -78,8 +78,8 @@ export function Topbar({
       <button className="mobile-menu" onClick={onMenu} aria-label="Открыть меню"><Menu /></button>
       <div className="breadcrumb"><span>{user.company}</span><span>/</span><b>{sectionTitle}</b></div>
       <div className="top-actions">
-        <button className="icon-button" onClick={onNotifications} aria-label="Уведомления"><Bell size={19} /><i /></button>
-        <button className="upload-button" onClick={onUpload}><CloudUpload size={18} />Загрузить лог</button>
+        <button className="icon-button" data-testid="open-notifications" onClick={onNotifications} aria-label="Уведомления"><Bell size={19} /><i /></button>
+        <button className="upload-button" data-testid="open-upload" onClick={onUpload}><CloudUpload size={18} />Загрузить лог</button>
       </div>
     </header>
   );

@@ -86,7 +86,7 @@ function FirstRealFileGuide({ openUpload, pendingCount }: { openUpload: () => vo
         ))}
       </div>
       <div className="first-file-actions">
-        <button className="upload-button" onClick={openUpload}><CloudUpload size={16} />Загрузить первый файл</button>
+        <button className="upload-button" data-testid="open-first-file-upload" onClick={openUpload}><CloudUpload size={16} />Загрузить первый файл</button>
         <button onClick={() => downloadSample('puls-bvs-source-template.txt', sourceTemplate, 'text/plain;charset=utf-8')}>Скачать карточку файла</button>
       </div>
     </section>

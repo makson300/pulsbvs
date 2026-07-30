@@ -23,8 +23,8 @@ export type ModalProps = {
 
 export function Modal({ modal, setModal, fileInput, chooseFile, uploadedName, primaryAlert, loadDemo, loginDemo, user, setUser, fleetState, selectAssets }: ModalProps) {
   return (
-    <div className="modal-backdrop" onMouseDown={() => setModal(null)}>
-      <section className="upload-modal" onMouseDown={(event) => event.stopPropagation()}>
+    <div className="modal-backdrop" data-testid="modal-backdrop" onMouseDown={() => setModal(null)}>
+      <section className="upload-modal" data-testid={`modal-${modal}`} onMouseDown={(event) => event.stopPropagation()}>
         <button className="close-button" onClick={() => setModal(null)} aria-label="Закрыть">×</button>
         {modal === 'upload' && <UploadModal fileInput={fileInput} chooseFile={chooseFile} uploadedName={uploadedName} loadDemo={loadDemo} fleetState={fleetState} selectAssets={selectAssets} />}
         {modal === 'auth' && <AuthModal user={user} setUser={setUser} loginDemo={loginDemo} />}
@@ -106,18 +106,18 @@ function UploadModal({ fileInput, chooseFile, uploadedName, loadDemo, fleetState
       </div>
       <div className="asset-picker">
         <label>Дрон
-          <select value={fleetState.selectedDroneId} onChange={(event) => selectAssets(event.target.value, fleetState.selectedBatteryId)}>
+          <select data-testid="select-drone" value={fleetState.selectedDroneId} onChange={(event) => selectAssets(event.target.value, fleetState.selectedBatteryId)}>
             {fleetState.drones.map((drone) => <option value={drone.id} key={drone.id}>{drone.name}</option>)}
           </select>
         </label>
         <label>Батарея
-          <select value={fleetState.selectedBatteryId} onChange={(event) => selectAssets(fleetState.selectedDroneId, event.target.value)}>
+          <select data-testid="select-battery" value={fleetState.selectedBatteryId} onChange={(event) => selectAssets(fleetState.selectedDroneId, event.target.value)}>
             {fleetState.batteries.map((battery) => <option value={battery.id} key={battery.id}>{battery.label}</option>)}
           </select>
         </label>
       </div>
-      <input ref={fileInput} className="hidden-input" type="file" onChange={(event) => chooseFile(event.target.files?.[0])} accept=".csv,.txt,.dat,.kml,.zip,.json" />
-      <button className="drop-zone" onClick={() => fileInput.current?.click()}><CloudUpload size={23} /><strong>Выбрать файл</strong><span>CSV, TXT, DAT, KML, ZIP, JSON</span></button>
+      <input ref={fileInput} className="hidden-input" data-testid="file-input" type="file" onChange={(event) => chooseFile(event.target.files?.[0])} accept=".csv,.txt,.dat,.kml,.zip,.json" />
+      <button className="drop-zone" data-testid="choose-file" onClick={() => fileInput.current?.click()}><CloudUpload size={23} /><strong>Выбрать файл</strong><span>CSV, TXT, DAT, KML, ZIP, JSON</span></button>
       {uploadedName && <div className="upload-result"><ShieldCheck size={18} />Загружен файл: «{uploadedName}».</div>}
       <div className="sample-actions">
         <button onClick={() => downloadSample('puls-bvs-sample.csv', sampleCsv, 'text/csv;charset=utf-8')}>Скачать пример CSV</button>

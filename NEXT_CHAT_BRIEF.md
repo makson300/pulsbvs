@@ -54,9 +54,13 @@ https://github.com/makson300/pulsbvs
 main -> origin/main
 ```
 
-Последние подтверждённые коммиты перед memory-pass:
+Последние подтверждённые коммиты:
 
 ```text
+1ccc850 Extract dashboard components
+9e79b9e Extract landing component
+ce4b7a6 Add first real file intake flow
+75b37a5 Simplify client-facing copy
 735690b Track project Harvi skills
 9e76312 Refactor dashboard app structure
 bc4a4db Keep sidebar footer navigation visible
@@ -105,13 +109,14 @@ http://127.0.0.1:5173/
   - Полёты;
   - Техническое обслуживание.
 - Sidebar footer regression исправлена: `Главная`, `Настройки`, `Помощь` видимы снизу sidebar; есть `data-testid="sidebar-footer"`.
-- `src/App.tsx` после refactor pass всё ещё один файл, но структурирован на именованные компоненты: `Sidebar`, `Topbar`, `PageHeader`, `Landing`, `Overview`, `FleetHealthCard`, `RiskCard`, `FlightChart`, `FleetView`, `BatteriesView`, `FlightsView`, `ImportHistory`, `Modal`, `UploadModal`, `AuthModal` и др.
+- `src/App.tsx` после Variant B стал компактным оркестратором состояния, обработчиков, текущего раздела и модального окна.
+- Крупные UI-блоки вынесены по файлам: `src/components/Landing.tsx`, `DashboardShell.tsx`, `CommonCards.tsx`, `Overview.tsx`, `FleetSections.tsx`, `FlightsSection.tsx`, `Modals.tsx`; общие типы и данные находятся в `src/appTypes.ts` и `src/appData.ts`.
 - Демо-активы дронов и батарей вынесены в `src/domain/fleet.ts`.
 - Для новой пустой установки активы соответствуют текущему парку: DJI Avata 2, DJI Avata 360 и DJI Mini 4 Pro. До подтверждённого журнала нет показателей здоровья, налёта и циклов; старый `localStorage` не сбрасывается и не мигрируется автоматически.
 - В UI можно добавлять демо-дроны и демо-батареи; повторный ID батареи выбирает существующую запись вместо дубля.
 - Импорт CSV/TXT как табличной телеметрии.
 - Импорт KML как маршрутного источника.
-- DAT/ZIP принимаются с честным статусом: декодер ещё не подключён, аналитика не запускается, полноценная запись истории не создаётся.
+- DAT/ZIP/JSON принимаются с честным статусом: чтение формата ещё не подтверждено, аналитика не запускается, полноценная запись истории не создаётся.
 - Data Quality Score.
 - Паспорт импорта:
   - route-only;
@@ -132,7 +137,7 @@ http://127.0.0.1:5173/
   - открытие сохранённого анализа после перезагрузки;
   - есть `data-testid="import-history"`.
 - Тесты аналитики и доменной модели через Vitest:
-  - последний проверенный результат: 15 тестов проходят.
+  - последний проверенный результат: 17 тестов проходят.
 - Проектные Harvi skills находятся в `.harvi/skills/**` и отслеживаются Git.
 
 ## 4. Проверенное состояние перед handoff
@@ -154,6 +159,7 @@ Browser/Puppeteer smoke ранее подтвердил:
 - Sidebar footer видим: `Главная`, `Настройки`, `Помощь`.
 - После refactor `App.tsx` чистый smoke подтвердил footer, историю импортов и связку активов.
 - После подготовки к реальным логам upload modal показывает источники логов, ограничения DJI Fly / Assistant 2 / KML, чеклист готовности, кнопку шаблона `source.txt` и прокручивается на малых экранах.
+- После полного Variant B component extraction browser smoke подтвердил landing, демо-кабинет, обзор, upload modal, селекторы дрона/батареи, очередь ZIP-файла без неподтверждённой аналитики, основные разделы, помощь и настройки.
 
 Memory-pass сам должен проверяться как docs-only change через `git diff --check`, `git status --short --branch`, commit и push.
 
@@ -165,7 +171,7 @@ Memory-pass сам должен проверяться как docs-only change �
 
 ### Этап 2. Основание первого пилота: активы и история импортов — завершён в frontend-демо
 
-Реализованы доменные типы `DroneAsset`, `BatteryAsset`, `SavedTelemetryImport`, `PendingTelemetryImport`, localStorage-хранилище `puls-bvs-fleet-state`, выбор дрона и батареи при импорте, добавление демо-дронов/батарей, история поддерживаемых импортов, очередь исследования неподдержанных файлов, открытие сохранённого анализа после перезагрузки, sidebar footer fix и структурный refactor `App.tsx`.
+Реализованы доменные типы `DroneAsset`, `BatteryAsset`, `SavedTelemetryImport`, `PendingTelemetryImport`, localStorage-хранилище `puls-bvs-fleet-state`, выбор дрона и батареи при импорте, добавление демо-дронов/батарей, история поддерживаемых импортов, очередь исследования неподдержанных файлов, открытие сохранённого анализа после перезагрузки, sidebar footer fix и полный вынос крупных dashboard-компонентов из `App.tsx`.
 
 Ограничения этапа: это локальный frontend-контур без backend/БД; DAT/ZIP/JSON не создают полноценную запись истории, пока нет подтверждённого декодера. Подготовительные [API-контракты](docs/BACKEND_API_CONTRACT_V1.md), [ADR](docs/adr/0001-node-postgresql-backend.md), [требования к T40-журналам](docs/DJI_AGRAS_T40_ANONYMIZED_LOG_REQUIREMENTS.md), [общая инструкция по журналам DJI](docs/ИНСТРУКЦИЯ_ПО_ПОЛУЧЕНИЮ_ЖУРНАЛОВ_DJI.md) и [инструкция по логам с телефона/пульта](docs/ИНСТРУКЦИЯ_ПО_ЛОГАМ_С_ТЕЛЕФОНА_И_ПУЛЬТА_DJI.md) готовы, но production-контур и адаптер отсутствуют.
 
