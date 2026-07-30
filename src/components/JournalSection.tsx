@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, ClipboardCheck, FileDown, Plane, Plus } from 'lucide-react';
 import { downloadSample } from '../appData';
-import type { BatteryAsset, ChecklistPhase, ChecklistRun, DroneAsset, ManualFlightEntry } from '../domain/fleet';
+import { toLocalDateKey, type BatteryAsset, type ChecklistPhase, type ChecklistRun, type DroneAsset, type ManualFlightEntry } from '../domain/fleet';
 
 const checklistItems: Record<ChecklistPhase, { id: string; label: string }[]> = {
   preflight: [
@@ -19,7 +19,7 @@ const checklistItems: Record<ChecklistPhase, { id: string; label: string }[]> = 
 };
 
 export function JournalView({ drones, batteries, flights, checklistRuns, onAddFlight, onAddChecklist }: { drones: DroneAsset[]; batteries: BatteryAsset[]; flights: ManualFlightEntry[]; checklistRuns: ChecklistRun[]; onAddFlight: (input: Omit<ManualFlightEntry, 'id' | 'createdAt'>) => void; onAddChecklist: (input: Omit<ChecklistRun, 'id' | 'completedAt'>) => void }) {
-  const [form, setForm] = useState({ flightDate: new Date().toISOString().slice(0, 10), droneId: drones[0]?.id ?? '', batteryId: '', pilot: '', purpose: '', durationMin: '', location: '', note: '' });
+  const [form, setForm] = useState({ flightDate: toLocalDateKey(), droneId: drones[0]?.id ?? '', batteryId: '', pilot: '', purpose: '', durationMin: '', location: '', note: '' });
   const [selectedFlightId, setSelectedFlightId] = useState('');
   const reversedFlights = useMemo(() => [...flights].sort((a, b) => b.flightDate.localeCompare(a.flightDate)), [flights]);
   const selectedFlight = flights.find((flight) => flight.id === selectedFlightId) ?? reversedFlights[0];
@@ -41,6 +41,11 @@ function ChecklistPanel({ flight, phase, existing, onSave }: { flight?: ManualFl
   const [answers, setAnswers] = useState<Record<string, boolean>>({});
   const [note, setNote] = useState('');
   const isPreflight = phase === 'preflight';
+  useEffect(() => {
+    setAnswers({});
+    setNote('');
+  }, [flight?.id, phase]);
+
   if (!flight) return <article className="panel checklist-panel"><p className="eyebrow">{isPreflight ? 'Перед полётом' : 'После полёта'}</p><h2>Чек-лист</h2><p className="empty-state">Сначала добавьте запись о полёте, затем выберите её в списке.</p></article>;
   const savedAnswers = existing?.answers ?? answers;
   return <article className="panel checklist-panel"><p className="eyebrow">{isPreflight ? 'Перед полётом' : 'После полёта'}</p><h2>{isPreflight ? 'Предполётный чек-лист' : 'Послеполётный чек-лист'}</h2><p className="checklist-flight">Запись: {flight.flightDate} · {flight.purpose}</p>{existing ? <div className="checklist-done"><CheckCircle2 size={18} />Заполнен {new Date(existing.completedAt).toLocaleString('ru-RU')}</div> : <form className="compact-form" onSubmit={(event) => { event.preventDefault(); onSave({ flightId: flight.id, phase, answers, note }); setAnswers({}); setNote(''); }}>{checklistItems[phase].map((item) => <label className="check-item" key={item.id}><input type="checkbox" checked={Boolean(savedAnswers[item.id])} onChange={(event) => setAnswers({ ...answers, [item.id]: event.target.checked })} />{item.label}</label>)}<label>Примечание<textarea className="form-input" value={note} onChange={(event) => setNote(event.target.value)} /></label><button className="upload-button" disabled={checklistItems[phase].some((item) => !answers[item.id])}><CheckCircle2 size={16} />Подтвердить чек-лист</button></form>}</article>;

@@ -103,6 +103,20 @@ export interface FleetReadiness {
   facts: string[];
 }
 
+export type DocumentExpiryStatus = 'current' | 'expires_soon' | 'expired' | 'no_expiry';
+
+export const checklistItemIds: Record<ChecklistPhase, string[]> = {
+  preflight: ['airframe', 'battery', 'airspace', 'mission'],
+  postflight: ['inspection', 'batteryRemoved', 'notes', 'storage'],
+};
+
+export function toLocalDateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export interface FileOriginNote {
   source?: string;
   flightDate?: string;
@@ -273,7 +287,7 @@ export function createIncidentRecord(input: Omit<IncidentRecord, 'id' | 'created
     id: createId('incident', now),
     title: input.title.trim() || 'Наблюдение без названия',
     description: input.description?.trim() || undefined,
-    occurredOn: input.occurredOn || now.toISOString().slice(0, 10),
+    occurredOn: input.occurredOn || toLocalDateKey(now),
     status: input.status ?? 'open',
     createdAt: now.toISOString(),
   };
@@ -299,7 +313,7 @@ export function createManualFlightEntry(input: Omit<ManualFlightEntry, 'id' | 'c
   return {
     ...input,
     id: createId('manual-flight', now),
-    flightDate: input.flightDate || now.toISOString().slice(0, 10),
+    flightDate: input.flightDate || toLocalDateKey(now),
     pilot: input.pilot.trim() || 'Пилот не указан',
     purpose: input.purpose.trim() || 'Рабочий вылет',
     durationMin: Math.max(0, Number(input.durationMin) || 0),
@@ -309,7 +323,12 @@ export function createManualFlightEntry(input: Omit<ManualFlightEntry, 'id' | 'c
   };
 }
 
-export function createChecklistRun(input: Omit<ChecklistRun, 'id' | 'completedAt'>, now = new Date()): ChecklistRun {
+export function isChecklistComplete(phase: ChecklistPhase, answers: Record<string, boolean>) {
+  return checklistItemIds[phase].every((id) => answers[id] === true);
+}
+
+export function createChecklistRun(input: Omit<ChecklistRun, 'id' | 'completedAt'>, now = new Date()): ChecklistRun | null {
+  if (!input.flightId || !isChecklistComplete(input.phase, input.answers)) return null;
   return {
     ...input,
     id: createId('checklist', now),
@@ -318,17 +337,29 @@ export function createChecklistRun(input: Omit<ChecklistRun, 'id' | 'completedAt
   };
 }
 
+export function getManualFlightMinutes(flights: ManualFlightEntry[], droneId?: string) {
+  return flights.filter((flight) => !droneId || flight.droneId === droneId).reduce((total, flight) => total + flight.durationMin, 0);
+}
+
+export function getDocumentExpiryStatus(document: DocumentRecord, now = new Date()): DocumentExpiryStatus {
+  if (!document.expiresOn) return 'no_expiry';
+  const today = toLocalDateKey(now);
+  const inThirtyDays = toLocalDateKey(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 30));
+  if (document.expiresOn < today) return 'expired';
+  if (document.expiresOn <= inThirtyDays) return 'expires_soon';
+  return 'current';
+}
+
 function isDueOnOrBefore(date: string | undefined, today: string) {
   return Boolean(date && date <= today);
 }
 
 export function getFleetReadiness(state: FleetState, now = new Date()): FleetReadiness {
-  const today = now.toISOString().slice(0, 10);
-  const inThirtyDays = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const today = toLocalDateKey(now);
   const overdueTasks = state.maintenanceTasks.filter((task) => task.status !== 'completed' && task.status !== 'cancelled' && isDueOnOrBefore(task.dueDate, today));
   const criticalIncidents = state.incidents.filter((item) => item.status === 'open' && item.severity === 'critical');
-  const expiredDocuments = state.documents.filter((item) => item.expiresOn && item.expiresOn < today);
-  const expiringDocuments = state.documents.filter((item) => item.expiresOn && item.expiresOn >= today && item.expiresOn <= inThirtyDays);
+  const expiredDocuments = state.documents.filter((item) => getDocumentExpiryStatus(item, now) === 'expired');
+  const expiringDocuments = state.documents.filter((item) => getDocumentExpiryStatus(item, now) === 'expires_soon');
   const facts = [
     overdueTasks.length ? `Открытых задач со сроком: ${overdueTasks.length}` : '',
     criticalIncidents.length ? `Незакрытых критичных событий: ${criticalIncidents.length}` : '',

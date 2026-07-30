@@ -10,6 +10,10 @@ import {
   createPendingImport,
   createSavedImport,
   getFleetReadiness,
+  getDocumentExpiryStatus,
+  getManualFlightMinutes,
+  isChecklistComplete,
+  toLocalDateKey,
   loadFleetState,
   saveFleetState,
   setIncidentStatus,
@@ -144,13 +148,24 @@ describe('fleet domain state', () => {
     const state = createDefaultFleetState();
     const now = new Date('2026-07-30T10:00:00Z');
     const flight = createManualFlightEntry({ flightDate: '2026-07-30', droneId: state.selectedDroneId, batteryId: state.selectedBatteryId, pilot: 'Иван', purpose: 'Осмотр поля', durationMin: 18, location: 'Поле 7' }, now);
-    const checklist = createChecklistRun({ flightId: flight.id, phase: 'preflight', answers: { airframe: true, battery: true } }, now);
+    const checklist = createChecklistRun({ flightId: flight.id, phase: 'preflight', answers: { airframe: true, battery: true, airspace: true, mission: true } }, now);
     const passport = updateAssetPassport(state.drones[0], { serialNumber: 'SN-001', owner: 'АгроСфера' }, now);
 
     expect(flight.durationMin).toBe(18);
     expect(flight.createdAt).toBe(now.toISOString());
-    expect(checklist.flightId).toBe(flight.id);
+    expect(checklist?.flightId).toBe(flight.id);
     expect(passport.passport).toMatchObject({ serialNumber: 'SN-001', owner: 'АгроСфера' });
+  });
+
+  it('requires every checklist item and totals only manual flight minutes', () => {
+    const state = createDefaultFleetState();
+    const now = new Date('2026-07-30T10:00:00Z');
+    const flight = createManualFlightEntry({ flightDate: '2026-07-30', droneId: state.selectedDroneId, pilot: 'Иван', purpose: 'Осмотр', durationMin: 18 }, now);
+
+    expect(isChecklistComplete('preflight', { airframe: true, battery: true, airspace: true, mission: true })).toBe(true);
+    expect(createChecklistRun({ flightId: flight.id, phase: 'preflight', answers: { airframe: true } }, now)).toBeNull();
+    expect(getManualFlightMinutes([flight], state.selectedDroneId)).toBe(18);
+    expect(getManualFlightMinutes([flight], 'another-drone')).toBe(0);
   });
 
   it('calculates readiness only from explicit operational facts', () => {
@@ -165,5 +180,21 @@ describe('fleet domain state', () => {
     expect(getFleetReadiness({ ...state, documents: [expiredDocument] }, now).status).toBe('blocked');
     expect(setMaintenanceTaskStatus(task, 'completed', now).completedAt).toBe(now.toISOString());
     expect(setIncidentStatus(incident, 'resolved', now).resolvedAt).toBe(now.toISOString());
+  });
+
+  it('labels document expiry deterministically', () => {
+    const now = new Date('2026-07-30T10:00:00Z');
+    const base = { title: 'Страховка', documentType: 'Страховка' };
+
+    expect(getDocumentExpiryStatus(createDocumentRecord({ ...base, expiresOn: '2026-07-29' }, now), now)).toBe('expired');
+    expect(getDocumentExpiryStatus(createDocumentRecord({ ...base, expiresOn: '2026-08-10' }, now), now)).toBe('expires_soon');
+    expect(getDocumentExpiryStatus(createDocumentRecord({ ...base, expiresOn: '2026-09-10' }, now), now)).toBe('current');
+    expect(getDocumentExpiryStatus(createDocumentRecord(base, now), now)).toBe('no_expiry');
+  });
+
+  it('uses a local calendar date instead of UTC when setting operational dates', () => {
+    const localLateEvening = new Date(2026, 6, 30, 23, 30);
+
+    expect(toLocalDateKey(localLateEvening)).toBe('2026-07-30');
   });
 });

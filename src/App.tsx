@@ -21,6 +21,7 @@ import {
   createPendingImport,
   createSavedImport,
   getFleetReadiness,
+  getManualFlightMinutes,
   loadFleetState,
   saveFleetState,
   setIncidentStatus,
@@ -203,7 +204,9 @@ function App() {
   }
 
   function addChecklist(input: Omit<ChecklistRun, 'id' | 'completedAt'>) {
-    setFleetState((state) => ({ ...state, checklistRuns: [createChecklistRun(input), ...state.checklistRuns.filter((item) => !(item.flightId === input.flightId && item.phase === input.phase))] }));
+    const checklist = createChecklistRun(input);
+    if (!checklist) return;
+    setFleetState((state) => ({ ...state, checklistRuns: [checklist, ...state.checklistRuns.filter((item) => !(item.flightId === input.flightId && item.phase === input.phase))] }));
   }
 
   const modalProps: ModalProps = {
@@ -279,7 +282,7 @@ function App() {
             readiness={readiness}
           />
         )}
-        {section === 'fleet' && <FleetView drones={fleetState.drones} onAddDrone={addDrone} onSavePassport={savePassport} />}
+        {section === 'fleet' && <FleetView drones={fleetState.drones} flights={fleetState.manualFlights} onAddDrone={addDrone} onSavePassport={savePassport} />}
         {section === 'batteries' && <BatteriesView batteries={fleetState.batteries} onAddBattery={addBattery} onSavePassport={savePassport} />}
         {section === 'flights' && (
           <FlightsView
