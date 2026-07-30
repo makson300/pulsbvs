@@ -61,15 +61,15 @@ const navItems: NavItem[] = [
 ];
 
 const flights = [
-  { id: 'FL-2048', drone: 'Agras T40 №01', date: 'Сегодня 09:18', duration: '6 мин', result: 'warning', text: 'Аномальная просадка батареи' },
-  { id: 'FL-2047', drone: 'Agras T40 №02', date: 'Вчера 17:40', duration: '11 мин', result: 'ok', text: 'Полёт штатный' },
-  { id: 'FL-2046', drone: 'Mini 4 Pro', date: 'Вчера 12:05', duration: '18 мин', result: 'ok', text: 'Тестовый источник для парсера' },
+  { id: 'FL-2048', drone: 'DJI Avata 2', date: 'Сегодня 09:18', duration: '6 мин', result: 'warning', text: 'Демо-лог с базовой телеметрией' },
+  { id: 'FL-2047', drone: 'DJI Avata 360', date: 'Вчера 17:40', duration: '11 мин', result: 'ok', text: 'Маршрутный источник без батарейных выводов' },
+  { id: 'FL-2046', drone: 'DJI Mini 4 Pro', date: 'Вчера 12:05', duration: '18 мин', result: 'ok', text: 'Тестовый источник для парсера' },
 ];
 
 const maintenance = [
-  { target: 'Agras T40 №03', type: 'Плановое ТО', due: 'Сейчас', status: 'Открыто', tone: 'critical' },
-  { target: 'BT-021', type: 'Диагностика батареи', due: 'До следующего вылета', status: 'Критично', tone: 'critical' },
-  { target: 'Agras T40 №02', type: 'Проверка двигателя M3', due: 'Через 2 дня', status: 'Назначено', tone: 'warning' },
+  { target: 'DJI Mini 4 Pro', type: 'Проверить source.txt для первого лога', due: 'Перед импортом', status: 'Открыто', tone: 'warning' },
+  { target: 'Батарея без серийного номера', type: 'Заполнить псевдоним и происхождение', due: 'До анализа', status: 'Ожидает', tone: 'warning' },
+  { target: 'DJI Avata 2', type: 'Подготовить рабочую копию лога', due: 'После получения файла', status: 'Назначено', tone: 'ok' },
 ];
 
 const pricing = [
@@ -535,7 +535,7 @@ function Overview({
         <QualityPanel analysis={analysis} />
         <article className="panel demo-panel">
           <p className="eyebrow">Тестовые сценарии</p>
-          <h2>Проверить аналитику без T40</h2>
+          <h2>Проверить аналитику без реальных DJI-логов</h2>
           <div className="demo-actions">
             <button onClick={() => loadDemo('normal')}>Норма</button>
             <button onClick={() => loadDemo('degraded')}>Деградация</button>
@@ -765,7 +765,7 @@ function RecognizedData({ analysis }: { analysis: FlightAnalysis }) {
         <div><strong>Не хватает для диагностики</strong><div className="tag-cloud tag-cloud--missing">{missing.map((field) => <span key={field}>{field}</span>)}</div></div>
         <div><strong>Рекомендуемые CSV-поля</strong><div className="tag-cloud tag-cloud--hint">{criticalHints.map((field) => <span key={field}>{field}</span>)}</div></div>
       </div>
-      <p>{analysis.importProfile.capability === 'route_only' ? 'Этот файл пригоден для маршрута, но по нему нельзя честно оценить батарею T40: нет заряда, напряжения, температуры или ячеек.' : 'Чем больше батарейных полей есть в журнале, тем выше надёжность первичного triage и меньше ручных допущений.'}</p>
+      <p>{analysis.importProfile.capability === 'route_only' ? 'Этот файл пригоден для маршрута, но по нему нельзя честно оценить батарею: нет заряда, напряжения, температуры или ячеек.' : 'Чем больше батарейных полей есть в журнале, тем выше надёжность первичного triage и меньше ручных допущений.'}</p>
     </article>
   );
 }

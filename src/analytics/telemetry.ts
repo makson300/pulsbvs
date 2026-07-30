@@ -226,7 +226,7 @@ function buildImportProfile(parsed: ParsedTelemetry, quality: DataQualityReport)
     title: 'Базовая батарейная телеметрия',
     capability: 'battery_basic',
     verdict: 'Можно делать первичный скрининг батареи, но без ячеек точность ниже.',
-    nextBestFile: 'Для серьёзной диагностики T40 нужен экспорт с напряжениями ячеек, температурой, ошибками батареи и нагрузкой.',
+    nextBestFile: 'Для серьёзной диагностики нужен подтверждённый экспорт с напряжениями ячеек, температурой, ошибками батареи и нагрузкой.',
   };
   return {
     title: parsed.sourceKind === 'kml' ? 'Маршрут KML / SmartFarm' : parsed.sourceKind === 'unsupported' ? 'Декодер ещё не подключён' : 'Ограниченный источник',

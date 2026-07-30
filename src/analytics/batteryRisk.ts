@@ -39,7 +39,7 @@ export interface BatteryAssessment {
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 /**
- * Conservative first-pass rules for T40-class battery telemetry.
+ * Conservative first-pass rules for battery telemetry.
  * These are triage signals, not a replacement for the DJI manual or diagnostics.
  */
 export function assessBattery(snapshot: BatterySnapshot): BatteryAssessment {
@@ -105,7 +105,7 @@ export function assessBattery(snapshot: BatterySnapshot): BatteryAssessment {
     score -= 35;
     alerts.push({
       code: 'BATTERY_UNDERVOLTAGE', severity: 'critical', title: 'Критически низкое напряжение',
-      detail: `Напряжение пакета ${snapshot.packVoltage?.toFixed(1)} В ниже порога автоматической посадки T40.`,
+      detail: `Напряжение пакета ${snapshot.packVoltage?.toFixed(1)} В ниже консервативного порога первичного triage.`,
       recommendation: 'Зафиксируйте событие и не используйте батарею повторно без осмотра.',
     });
   }
