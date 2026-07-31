@@ -56,7 +56,6 @@ export function MaintenanceView({ drones, batteries, flights, tasks, schedules, 
   const [task, setTask] = useState({ title: '', dueDate: '', asset: '', responsible: '', note: '' });
   const [incident, setIncident] = useState({ title: '', occurredOn: toLocalDateKey(), asset: '', flightId: '', severity: 'warning' as IncidentRecord['severity'], description: '' });
   const [document, setDocument] = useState({ title: '', documentType: 'Страховка', expiresOn: '', asset: '', reference: '' });
-  const label = (kind?: AssetKind, id?: string) => assets.find((asset) => asset.kind === kind && asset.id === id)?.label ?? 'Без привязки';
   const flightLabel = (id?: string) => flights.find((flight) => flight.id === id) ? `${flights.find((flight) => flight.id === id)?.flightDate} · ${flights.find((flight) => flight.id === id)?.purpose}` : undefined;
   return <>
     <section className={`panel readiness-summary readiness-summary--${readiness.status}`}><div><p className="eyebrow">Готовность флота</p><h2>{readiness.label}</h2><p>Статус отражает только внесённые задачи, события, сроки и полноту ручных чек-листов; это не автоматический допуск к полёту.</p></div><ul>{readiness.facts.map((fact) => <li key={fact}>{fact}</li>)}</ul></section>

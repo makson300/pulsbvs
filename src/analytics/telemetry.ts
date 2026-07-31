@@ -197,7 +197,8 @@ export function analyzeTelemetry(parsed: ParsedTelemetry): FlightAnalysis {
   const tempValues = numbers('batteryTemperatureC');
   const cellDeviations = rows.map((row) => row.cellVoltages?.length ? Math.max(...row.cellVoltages) - Math.min(...row.cellVoltages) : undefined).filter((value): value is number => value !== undefined);
   const durationMin = first?.timestamp && last?.timestamp ? (Date.parse(last.timestamp) - Date.parse(first.timestamp)) / 60000 : null;
-  const dischargeRate = durationMin && durationMin > 0 && batteryValues.length ? (batteryValues[0] - batteryValues.at(-1)!) / durationMin : undefined;
+  const lastBatteryValue = batteryValues.at(-1);
+  const dischargeRate = durationMin && durationMin > 0 && batteryValues.length && lastBatteryValue !== undefined ? (batteryValues[0] - lastBatteryValue) / durationMin : undefined;
   const snapshot: BatterySnapshot = {
     capability: quality.available.includes('Напряжения ячеек') || quality.available.includes('Температура батареи') ? 'extended' : 'route_only',
     batteryPercent: batteryValues.at(-1) ?? 0,

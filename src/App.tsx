@@ -9,7 +9,7 @@ import { JournalView, ReportsView } from './components/JournalSection';
 import { Landing } from './components/Landing';
 import { Modal, type ModalProps } from './components/Modals';
 import { Overview } from './components/Overview';
-import { PageHeader, Sidebar, Topbar } from './components/DashboardShell';
+import { PageHeader, Sidebar, StorageWarning, Topbar } from './components/DashboardShell';
 import {
   createBatteryAsset,
   createChecklistRun,
@@ -72,8 +72,20 @@ function readLocalItem(key: string) {
 function writeLocalItem(key: string, value: string) {
   try {
     localStorage.setItem(key, value);
+    return true;
   } catch {
-    // The demo remains usable when browser storage is unavailable.
+    return false;
+  }
+}
+
+function isLocalStorageAvailable() {
+  try {
+    const key = 'puls-bvs-storage-check';
+    localStorage.setItem(key, '1');
+    localStorage.removeItem(key);
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -95,6 +107,7 @@ function App() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [fileOriginNote, setFileOriginNote] = useState<FileOriginNote>({});
   const [fleetState, setFleetState] = useState<FleetState>(() => loadFleetState());
+  const [storageAvailable, setStorageAvailable] = useState(isLocalStorageAvailable);
   const [analysis, setAnalysis] = useState<FlightAnalysis>(() =>
     fleetState.imports[0]?.analysis ?? analyzeTelemetry(parseTelemetryCsv(demoLogs.degraded.label, demoLogs.degraded.content)),
   );
@@ -109,11 +122,11 @@ function App() {
   const readiness = useMemo(() => getFleetReadiness(fleetState), [fleetState]);
 
   useEffect(() => {
-    saveFleetState(fleetState);
+    if (!saveFleetState(fleetState)) setStorageAvailable(false);
   }, [fleetState]);
 
   const loginDemo = (profile = user) => {
-    writeLocalItem('puls-bvs-user', JSON.stringify(profile));
+    if (!writeLocalItem('puls-bvs-user', JSON.stringify(profile))) setStorageAvailable(false);
     setUser(profile);
     setView('dashboard');
     setModal(null);
@@ -303,6 +316,8 @@ function App() {
           onNotifications={() => setModal('notifications')}
           onUpload={() => setModal('upload')}
         />
+
+        {!storageAvailable && <StorageWarning />}
 
         <PageHeader sectionTitle={sectionTitle} sourceName={uploadedName ?? analysis.parsed.sourceName} qualityScore={analysis.quality.score} analysisSource={analysisSource} operational={section === 'fleet' || section === 'batteries' || section === 'maintenance' || section === 'journal' || section === 'reports'} />
 

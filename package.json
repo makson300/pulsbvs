@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:browser": "playwright test"
+    "test:browser": "playwright test",
+    "lint": "biome lint ."
   },
   "dependencies": {
     "lucide-react": "latest",
@@ -16,6 +17,7 @@
     "react-dom": "latest"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.5.6",
     "@playwright/test": "^1.62.1",
     "@types/react": "latest",
     "@types/react-dom": "latest",

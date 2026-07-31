@@ -20,15 +20,15 @@ function PendingImportQueue({ pendingImports, drones, batteries }: { pendingImpo
   return (
     <section className="panel list-panel pending-imports" data-testid="pending-imports">
       <div className="panel-heading">
-        <div><p className="eyebrow">Файлы на проверке</p><h2>Принятые сложные файлы</h2></div>
-        <span className="status-pill status-pill--warning">{pendingImports.length} файлов</span>
+        <div><p className="eyebrow">Очередь проверки форматов</p><h2>Записи о сложных файлах</h2></div>
+        <span className="status-pill status-pill--warning">{pendingImports.length} записей</span>
       </div>
       <div className="pending-note">
         <AlertTriangle size={16} />
-        <span>Это не ошибка загрузки. Файл сохранён в списке, но выводы появятся только после проверки, какие данные из него можно читать.</span>
+        <span>Это не ошибка. В браузере сохранена запись с метаданными файла, а не его оригинал; выводы появятся только после подтверждения, какие данные можно читать.</span>
       </div>
       {pendingImports.length === 0 ? (
-        <p className="empty-state">DAT/ZIP/JSON и другие сложные файлы будут появляться здесь: файл принят, но выводы по нему не строятся до проверки чтения данных.</p>
+        <p className="empty-state">После выбора DAT/ZIP/JSON и других сложных файлов здесь появится запись очереди с метаданными. Оригинал не сохраняется, а выводы не строятся до проверки чтения данных.</p>
       ) : pendingImports.map((item) => {
         const drone = drones.find((entry) => entry.id === item.droneId);
         const battery = batteries.find((entry) => entry.id === item.batteryId);

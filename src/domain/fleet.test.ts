@@ -81,7 +81,8 @@ describe('fleet domain state', () => {
     const saved = createSavedImport(analysis, state.selectedDroneId, state.selectedBatteryId, new Date('2026-07-30T09:10:00Z'));
 
     expect(saved).not.toBeNull();
-    const nextState = upsertImport(state, saved!);
+    if (!saved) throw new Error('Ожидалась поддержанная запись импорта.');
+    const nextState = upsertImport(state, saved);
     const storage = memoryStorage();
     saveFleetState(nextState, storage);
     const restored = loadFleetState(storage);
@@ -127,7 +128,8 @@ describe('fleet domain state', () => {
     const pending = createPendingImport(analysis, state.selectedDroneId, state.selectedBatteryId, new Date('2026-07-30T10:00:00Z'));
 
     expect(pending).not.toBeNull();
-    const nextState = upsertPendingImport(state, pending!);
+    if (!pending) throw new Error('Ожидалась запись файла в очереди проверки.');
+    const nextState = upsertPendingImport(state, pending);
     const storage = memoryStorage();
     saveFleetState(nextState, storage);
     const restored = loadFleetState(storage);
@@ -220,8 +222,9 @@ describe('fleet domain state', () => {
     const first = createManualFlightEntry({ flightDate: '2026-07-30', droneId: state.selectedDroneId, pilot: 'Иван', purpose: 'Первый', durationMin: 10 }, now);
     const second = createManualFlightEntry({ flightDate: '2026-07-30', droneId: state.selectedDroneId, pilot: 'Иван', purpose: 'Второй', durationMin: 10 }, now);
     const answers = { airframe: true, battery: true, airspace: true, mission: true };
-    const linkedRun = createChecklistRun({ flightId: first.id, phase: 'preflight', answers }, now)!;
-    const retainedRun = createChecklistRun({ flightId: second.id, phase: 'preflight', answers }, now)!;
+    const linkedRun = createChecklistRun({ flightId: first.id, phase: 'preflight', answers }, now);
+    const retainedRun = createChecklistRun({ flightId: second.id, phase: 'preflight', answers }, now);
+    if (!linkedRun || !retainedRun) throw new Error('Ожидались заполненные чек-листы.');
     const linkedIncident = createIncidentRecord({ title: 'Наблюдение', severity: 'info', occurredOn: '2026-07-30', flightId: first.id }, now);
     const next = removeManualFlightEntry({ ...state, manualFlights: [first, second], checklistRuns: [linkedRun, retainedRun], incidents: [linkedIncident] }, first.id);
 
@@ -236,7 +239,8 @@ describe('fleet domain state', () => {
     const selectedFlight = createManualFlightEntry({ flightDate: '2026-07-30', droneId: state.selectedDroneId, pilot: 'Иван', purpose: 'Осмотр', durationMin: 16 }, now);
     const otherFlight = createManualFlightEntry({ flightDate: '2026-07-20', droneId: 'other-drone', pilot: 'Мария', purpose: 'Тест', durationMin: 30 }, now);
     const answers = { airframe: true, battery: true, airspace: true, mission: true };
-    const checklist = createChecklistRun({ flightId: selectedFlight.id, phase: 'preflight', answers }, now)!;
+    const checklist = createChecklistRun({ flightId: selectedFlight.id, phase: 'preflight', answers }, now);
+    if (!checklist) throw new Error('Ожидался заполненный чек-лист.');
     const task = createMaintenanceTask({ assetKind: 'drone', assetId: state.selectedDroneId, title: 'Осмотр' }, now);
     const schedule = createMaintenanceSchedule({ assetKind: 'drone', assetId: state.selectedDroneId, title: 'Ежемесячный осмотр' }, now);
     const incident = createIncidentRecord({ assetKind: 'drone', assetId: state.selectedDroneId, title: 'Вмятина', severity: 'warning', occurredOn: '2026-07-30', flightId: selectedFlight.id }, now);

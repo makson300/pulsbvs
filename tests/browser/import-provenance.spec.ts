@@ -8,6 +8,23 @@ async function openCleanDashboard(page: import('@playwright/test').Page) {
 }
 
 test.describe('разделение синтетических и пользовательских источников', () => {
+  test('предупреждает, когда браузер не даёт сохранять локальные записи', async ({ page }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(window, 'localStorage', {
+        configurable: true,
+        value: {
+          getItem: () => null,
+          setItem: () => { throw new Error('storage unavailable'); },
+          removeItem: () => { throw new Error('storage unavailable'); },
+        },
+      });
+    });
+    await page.goto('/');
+    await page.getByTestId('open-demo-dashboard').click();
+
+    await expect(page.getByTestId('storage-unavailable-warning')).toContainText('исчезнут после перезагрузки');
+  });
+
   test('синтетический пример не создаёт запись истории', async ({ page }) => {
     await openCleanDashboard(page);
     await page.getByTestId('open-upload').click();
@@ -53,8 +70,9 @@ test.describe('разделение синтетических и пользов
     await expect(page.getByText('Загруженный файл: unverified-flight.zip')).toBeVisible();
     await expect(page.getByTestId('import-history')).toContainText('0 записей');
     const pending = page.getByTestId('pending-imports');
-    await expect(pending).toContainText('1 файлов');
+    await expect(pending).toContainText('1 записей');
     await expect(pending).toContainText('unverified-flight.zip');
+    await expect(pending).toContainText('запись с метаданными файла, а не его оригинал');
     await expect(pending).toContainText('ждёт проверки чтения данных');
   });
 });

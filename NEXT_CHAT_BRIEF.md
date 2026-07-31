@@ -24,7 +24,9 @@ c:/Users/Mvoro/OneDrive/Рабочий стол/KIMI CODE
 - git log --oneline -8
 
 Если планируешь менять код, после изменений запускай релевантные проверки:
+- npm run lint
 - npm test
+- npm run test:browser
 - npm run build
 - npm audit --omit=optional
 
@@ -60,18 +62,11 @@ main -> origin/main
 Последние подтверждённые коммиты:
 
 ```text
-1ccc850 Extract dashboard components
-9e79b9e Extract landing component
-ce4b7a6 Add first real file intake flow
-75b37a5 Simplify client-facing copy
-735690b Track project Harvi skills
-9e76312 Refactor dashboard app structure
-bc4a4db Keep sidebar footer navigation visible
-e9fa66e Add fleet assets and import history
-3f7fb2f Restore sidebar footer navigation
-9de86a2 Revise product roadmap from AirData analysis
-47acd21 Handle unsupported DAT and ZIP imports
-7ae79fb Harden telemetry parsing for malformed inputs
+f06fc5e Add import provenance browser smoke
+8a4164d Add safe operational maintenance planning
+bfb4d5e Deepen operational workflows
+7d41f46 Harden operational journal workflows
+f374272 Add operational flight journal and fleet records
 ```
 
 Текущий стек:
@@ -80,6 +75,8 @@ e9fa66e Add fleet assets and import history
 - React
 - TypeScript
 - Vitest
+- Biome
+- Playwright
 - lucide-react
 - localStorage для демо-сессии/демо-активов/истории импортов
 
@@ -87,7 +84,9 @@ e9fa66e Add fleet assets and import history
 
 ```bash
 npm run dev -- --host 127.0.0.1
+npm run lint
 npm test
+npm run test:browser
 npm run build
 npm audit --omit=optional
 ```
@@ -121,7 +120,7 @@ http://127.0.0.1:5173/
 - В UI можно добавлять демо-дроны и демо-батареи; повторный ID батареи выбирает существующую запись вместо дубля.
 - Импорт CSV/TXT как табличной телеметрии.
 - Импорт KML как маршрутного источника.
-- DAT/ZIP/JSON принимаются с честным статусом: чтение формата ещё не подтверждено, аналитика не запускается, полноценная запись истории не создаётся.
+- DAT/ZIP/JSON принимаются с честным статусом: чтение формата ещё не подтверждено, аналитика не запускается, полноценная запись истории не создаётся; демо хранит только запись очереди с метаданными, а не оригинал файла.
 - Их содержимое не читается в память до появления подтверждённого пути разбора; неизвестные расширения не маскируются под CSV, а произвольный XML не определяется как KML.
 - CSV/TXT/KML создают запись истории только при наличии распознанных точек; пустой файл остаётся в очереди проверки.
 - Для загрузки действует лимит 10 МБ; карточка происхождения включает источник, дату/период, сценарий и скрытые данные.
@@ -144,8 +143,9 @@ http://127.0.0.1:5173/
   - профиль данных, качество, алерты и исходный результат анализа;
   - открытие сохранённого анализа после перезагрузки;
   - есть `data-testid="import-history"`.
-- Тесты аналитики и доменной модели через Vitest:
-  - после расширения операционного контура: 36 тестов проходят.
+- Тесты аналитики и доменной модели через Vitest: 41 тест проходит.
+- `npm run lint` запускает Biome с узким набором правил: неиспользуемые импорты/переменные и небезопасные non-null утверждения.
+- Если браузер запрещает `localStorage`, dashboard показывает предупреждение, что записи и история исчезнут после перезагрузки. Это покрыто Playwright вместе с разделением синтетического демо, поддержанного CSV и ZIP-очереди метаданных.
 - Операционный контур в `FleetState` хранит паспорта дронов/батарей, задачи обслуживания, ручные календарные регламенты, события, документы, ручные записи полётов и чек-листы. При загрузке старого состояния недостающие коллекции безопасно становятся пустыми.
 - Паспорт, задача, событие, документ и ручной журнал — данные, введённые человеком и сохранённые в браузере. Они не заменяют исходный технический журнал, не создают телеметрию и не дают автоматический допуск к полёту.
 - «Цифровой журнал полётов» — отдельный раздел/услуга с предполётным и послеполётным чек-листами. Вылет можно уточнить или удалить; при удалении исчезают лишь его чек-листы, а связанные события сохраняются без ссылки. Сохранённый чек-лист можно уточнить только как полный набор обязательных ответов.
@@ -157,10 +157,12 @@ http://127.0.0.1:5173/
 
 ## 4. Проверенное состояние перед handoff
 
-Последние функциональные проверки после audit-pass:
+Последние функциональные проверки после усиления статической проверки и предупреждения о недоступном локальном хранении:
 
 ```text
-npm test                 -> 26 passed
+npm run lint             -> clean (27 files)
+npm test                 -> 41 passed
+npm run test:browser     -> 4 passed
 npm run build            -> ✓ built
 npm audit --omit=optional -> found 0 vulnerabilities
 git diff --check         -> clean
@@ -175,7 +177,8 @@ Browser/Puppeteer smoke ранее подтвердил:
 - После refactor `App.tsx` чистый smoke подтвердил footer, историю импортов и связку активов.
 - После подготовки к реальным логам upload modal показывает источники логов, ограничения DJI Fly / Assistant 2 / KML, чеклист готовности, кнопку шаблона `source.txt` и прокручивается на малых экранах.
 - После полного Variant B component extraction browser smoke подтвердил landing, демо-кабинет, обзор, upload modal, селекторы дрона/батареи, очередь ZIP-файла без неподтверждённой аналитики, основные разделы, помощь и настройки.
-- После audit-pass smoke подтвердил landing, открытие демо-кабинета, footer, upload modal с селекторами, безопасную постановку синтетического ZIP в очередь, отображение источника/сценария в карточке файла, раздел «Полёты» и окно помощи без внутренних терминов.
+- После audit-pass smoke подтвердил landing, открытие демо-кабинета, footer, upload modal с селекторами, безопасную постановку синтетического ZIP в очередь метаданных, отображение источника/сценария в карточке файла, раздел «Полёты» и окно помощи без внутренних терминов.
+- Автоматизированный Playwright smoke проверяет чистое `localStorage`: синтетический пример не создаёт историю, поддержанный CSV сохраняется с активами и происхождением, ZIP создаёт только запись очереди, а заблокированное локальное хранение показывает предупреждение.
 
 Memory-pass сам должен проверяться как docs-only change через `git diff --check`, `git status --short --branch`, commit и push.
 
@@ -245,11 +248,13 @@ Memory-pass сам должен проверяться как docs-only change �
 2. Закрывать цельные этапы/пункты с проверкой, не возвращаться к пользователю после каждого мелкого шага.
 3. Не имитировать реальную диагностику при нехватке данных.
 4. Любое изменение аналитики покрывать тестами.
-5. Для UI/import изменений запускать browser smoke через Puppeteer, если dev server доступен.
+5. Для UI/import изменений запускать Playwright browser smoke (`npm run test:browser`).
 6. После значимых изменений запускать:
 
 ```bash
+npm run lint
 npm test
+npm run test:browser
 npm run build
 ```
 
@@ -266,8 +271,8 @@ git status --short --branch
 ```bash
 git add .
 git commit -m "краткое описание"
-   git push
-   ```
+git push
+```
 
 9. Не выходить за границу исключительно гражданской авиации: сомнительный сценарий, заказчик или данные требуют остановки и отдельной проверки, а не расширения scope.
 
@@ -324,7 +329,7 @@ C:/Users/Mvoro/AppData/Roaming/Code/User/globalStorage/kristianshin.harvi-code/s
 
 ## 9. Первый рекомендуемый шаг в новом чате
 
-Не начинать adapter/backend наугад. Browser smoke различия демо и реального импорта уже автоматизирован через Playwright (`npm run test:browser`); он проверяет чистое browser storage, синтетический пример, поддержанный CSV и ZIP-очередь. Проверка CSV/TXT-выгрузки со специальными символами и ручные календарные регламенты также реализованы и покрыты тестами. Затем переходить к достоверному пилоту по первой модели текущего парка.
+Не начинать adapter/backend наугад. Browser smoke различия демо и реального импорта уже автоматизирован через Playwright (`npm run test:browser`); он проверяет чистое browser storage, синтетический пример, поддержанный CSV, ZIP-очередь метаданных и предупреждение при недоступном `localStorage`. Проверка CSV/TXT-выгрузки со специальными символами и ручные календарные регламенты также реализованы и покрыты тестами. Затем переходить к достоверному пилоту по первой модели текущего парка.
 
 **Минимальный полезный инкремент завершён: API contracts + backend ADR + инструкции по получению журналов текущего парка + frontend intake для реальных логов.**
 
@@ -337,9 +342,10 @@ C:/Users/Mvoro/AppData/Roaming/Code/User/globalStorage/kristianshin.harvi-code/s
 5. После документов/кода выполнить релевантные проверки:
 
    ```bash
-    npm test
-    npm run test:browser
-    npm run build
+npm run lint
+npm test
+npm run test:browser
+npm run build
    npm audit --omit=optional
    git diff --check
    git status --short --branch

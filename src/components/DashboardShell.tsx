@@ -1,4 +1,4 @@
-import { Activity, ArrowUpRight, Bell, ChevronDown, CircleHelp, CloudUpload, Menu, Settings } from 'lucide-react';
+import { Activity, AlertTriangle, ArrowUpRight, Bell, ChevronDown, CircleHelp, CloudUpload, Menu, Settings } from 'lucide-react';
 import { navItems } from '../appData';
 import type { Section, UserProfile } from '../appTypes';
 
@@ -82,6 +82,18 @@ export function Topbar({
         <button className="upload-button" data-testid="open-upload" onClick={onUpload}><CloudUpload size={18} />Загрузить лог</button>
       </div>
     </header>
+  );
+}
+
+export function StorageWarning() {
+  return (
+    <section className="storage-warning" role="alert" data-testid="storage-unavailable-warning">
+      <AlertTriangle size={18} />
+      <div>
+        <strong>Локальное сохранение недоступно</strong>
+        <span>Можно продолжить просмотр, но добавленные записи и история загрузок исчезнут после перезагрузки. Не используйте этот браузер для рабочих данных.</span>
+      </div>
+    </section>
   );
 }
 

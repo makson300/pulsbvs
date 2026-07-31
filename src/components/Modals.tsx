@@ -81,7 +81,7 @@ function UploadModal({ fileInput, chooseFile, uploadedName, uploadError, loadDem
   const intakeChecklist = [
     'Сначала выберите дрон и батарею, даже если батарея пока неизвестна.',
     'Файл из телефона или пульта полезен для маршрута, времени и части предупреждений.',
-    'DAT/ZIP/JSON сохраняются на отдельную проверку и не дают выводов, пока не подтверждено чтение данных.',
+    'Для DAT/ZIP/JSON в демо сохраняется только запись очереди с метаданными; выводы не появляются, пока не подтверждено чтение данных.',
     'Исходный файл храните у себя; сюда загружайте рабочую копию без лишних чувствительных данных.',
   ];
   const sourceGuide = [
@@ -92,7 +92,7 @@ function UploadModal({ fileInput, chooseFile, uploadedName, uploadError, loadDem
 
   return (
     <>
-      <IconTitle icon={<CloudUpload />} title="Загрузите файл полёта" eyebrow="Загрузка данных" text="Выбор дрона и батареи только связывает файл с нужной записью. CSV/TXT/KML сохраняются в историю. DAT/ZIP/JSON принимаются, но до проверки чтения данных не анализируются и не становятся записью полёта." />
+      <IconTitle icon={<CloudUpload />} title="Загрузите файл полёта" eyebrow="Загрузка данных" text="Выбор дрона и батареи только связывает файл с нужной записью. CSV/TXT/KML создают запись результата проверки. Для DAT/ZIP/JSON демо создаёт только запись очереди с метаданными: оригинал не хранится, а анализ не запускается до подтверждения чтения данных." />
       <div className="source-guide">
         <strong>Откуда брать файлы и что они дают</strong>
         {sourceGuide.map((item) => (
@@ -121,7 +121,7 @@ function UploadModal({ fileInput, chooseFile, uploadedName, uploadError, loadDem
       </div>
       <div className="origin-note-form">
         <strong>Карточка файла</strong>
-        <p>Короткая заметка сохранится вместе с загрузкой и поможет позже проверить происхождение файла.</p>
+        <p>Короткая заметка сохранится вместе с записью о файле и поможет позже проверить его происхождение.</p>
         <label>Откуда получен файл
           <input className="form-input" data-testid="origin-source" value={fileOriginNote.source ?? ''} onChange={(event) => setFileOriginNote({ ...fileOriginNote, source: event.target.value })} placeholder="Например: телефон пилота, пульт, карта KML" />
         </label>
