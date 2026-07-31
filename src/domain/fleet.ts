@@ -53,6 +53,19 @@ export interface MaintenanceTask {
   completedAt?: string;
 }
 
+export interface MaintenanceSchedule {
+  id: string;
+  assetKind?: AssetKind;
+  assetId?: string;
+  title: string;
+  nextDueDate?: string;
+  intervalDays?: number;
+  responsible?: string;
+  note?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
 export interface IncidentRecord {
   id: string;
   assetKind?: AssetKind;
@@ -117,6 +130,7 @@ export interface OperationalReportFilters {
 export interface OperationalReportSummary {
   flights: ManualFlightEntry[];
   tasks: MaintenanceTask[];
+  schedules: MaintenanceSchedule[];
   incidents: IncidentRecord[];
   documents: DocumentRecord[];
   checklistRuns: ChecklistRun[];
@@ -128,6 +142,7 @@ export interface OperationalReportSummary {
 }
 
 export type DocumentExpiryStatus = 'current' | 'expires_soon' | 'expired' | 'no_expiry';
+export type MaintenanceScheduleStatus = 'current' | 'due_soon' | 'overdue' | 'no_date';
 
 export const checklistItemIds: Record<ChecklistPhase, string[]> = {
   preflight: ['airframe', 'battery', 'airspace', 'mission'],
@@ -183,6 +198,7 @@ export interface FleetState {
   imports: SavedTelemetryImport[];
   pendingImports: PendingTelemetryImport[];
   maintenanceTasks: MaintenanceTask[];
+  maintenanceSchedules: MaintenanceSchedule[];
   incidents: IncidentRecord[];
   documents: DocumentRecord[];
   manualFlights: ManualFlightEntry[];
@@ -210,6 +226,7 @@ export function createDefaultFleetState(): FleetState {
     imports: [],
     pendingImports: [],
     maintenanceTasks: [],
+    maintenanceSchedules: [],
     incidents: [],
     documents: [],
     manualFlights: [],
@@ -233,6 +250,7 @@ export function loadFleetState(storage?: Pick<Storage, 'getItem'>): FleetState {
       imports: Array.isArray(parsed.imports) ? parsed.imports : [],
       pendingImports: Array.isArray(parsed.pendingImports) ? parsed.pendingImports : [],
       maintenanceTasks: Array.isArray(parsed.maintenanceTasks) ? parsed.maintenanceTasks : [],
+      maintenanceSchedules: Array.isArray(parsed.maintenanceSchedules) ? parsed.maintenanceSchedules : [],
       incidents: Array.isArray(parsed.incidents) ? parsed.incidents : [],
       documents: Array.isArray(parsed.documents) ? parsed.documents : [],
       manualFlights: Array.isArray(parsed.manualFlights) ? parsed.manualFlights : [],
@@ -322,6 +340,48 @@ export function updateMaintenanceTask(task: MaintenanceTask, update: Partial<Omi
 
 export function removeMaintenanceTask(state: FleetState, taskId: string): FleetState {
   return { ...state, maintenanceTasks: state.maintenanceTasks.filter((task) => task.id !== taskId) };
+}
+
+function cleanIntervalDays(value?: number) {
+  const interval = Math.floor(Number(value));
+  return Number.isFinite(interval) && interval > 0 ? interval : undefined;
+}
+
+function cleanCalendarDate(value?: string) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day ? value : undefined;
+}
+
+export function createMaintenanceSchedule(input: Omit<MaintenanceSchedule, 'id' | 'createdAt' | 'updatedAt'>, now = new Date()): MaintenanceSchedule {
+  return {
+    ...input,
+    id: createId('maintenance-schedule', now),
+    title: input.title.trim() || 'Регламент обслуживания',
+    nextDueDate: cleanCalendarDate(input.nextDueDate),
+    intervalDays: cleanIntervalDays(input.intervalDays),
+    responsible: input.responsible?.trim() || undefined,
+    note: input.note?.trim() || undefined,
+    createdAt: now.toISOString(),
+  };
+}
+
+export function updateMaintenanceSchedule(schedule: MaintenanceSchedule, update: Partial<Omit<MaintenanceSchedule, 'id' | 'createdAt' | 'updatedAt'>>, now = new Date()): MaintenanceSchedule {
+  const next = { ...schedule, ...update };
+  return {
+    ...next,
+    title: next.title.trim() || 'Регламент обслуживания',
+    nextDueDate: cleanCalendarDate(next.nextDueDate),
+    intervalDays: cleanIntervalDays(next.intervalDays),
+    responsible: next.responsible?.trim() || undefined,
+    note: next.note?.trim() || undefined,
+    updatedAt: now.toISOString(),
+  };
+}
+
+export function removeMaintenanceSchedule(state: FleetState, scheduleId: string): FleetState {
+  return { ...state, maintenanceSchedules: state.maintenanceSchedules.filter((schedule) => schedule.id !== scheduleId) };
 }
 
 export function createIncidentRecord(input: Omit<IncidentRecord, 'id' | 'createdAt' | 'resolvedAt' | 'status'> & { status?: IncidentStatus }, now = new Date()): IncidentRecord {
@@ -458,6 +518,7 @@ export function getOperationalReportSummary(state: FleetState, filters: Operatio
   const flights = state.manualFlights.filter((flight) => isWithinPeriod(flight.flightDate, filters) && (!filters.assetId || (filters.assetKind === 'drone' && flight.droneId === filters.assetId) || (filters.assetKind === 'battery' && flight.batteryId === filters.assetId)));
   const flightIds = new Set(flights.map((flight) => flight.id));
   const tasks = state.maintenanceTasks.filter((task) => matchesAsset(task, filters) && isWithinPeriod(task.createdAt.slice(0, 10), filters));
+  const schedules = state.maintenanceSchedules.filter((schedule) => matchesAsset(schedule, filters) && (!filters.from && !filters.to || isWithinPeriod(schedule.nextDueDate, filters)));
   const incidents = state.incidents.filter((incident) => matchesAsset(incident, filters) && isWithinPeriod(incident.occurredOn, filters));
   const documents = state.documents.filter((document) => matchesAsset(document, filters) && isWithinPeriod(document.createdAt.slice(0, 10), filters));
   const checklistRuns = state.checklistRuns.filter((run) => flightIds.has(run.flightId));
@@ -468,6 +529,7 @@ export function getOperationalReportSummary(state: FleetState, filters: Operatio
   return {
     flights,
     tasks,
+    schedules,
     incidents,
     documents,
     checklistRuns,
@@ -485,6 +547,15 @@ export function getDocumentExpiryStatus(document: DocumentRecord, now = new Date
   const inThirtyDays = toLocalDateKey(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 30));
   if (document.expiresOn < today) return 'expired';
   if (document.expiresOn <= inThirtyDays) return 'expires_soon';
+  return 'current';
+}
+
+export function getMaintenanceScheduleStatus(schedule: MaintenanceSchedule, now = new Date()): MaintenanceScheduleStatus {
+  if (!schedule.nextDueDate) return 'no_date';
+  const today = toLocalDateKey(now);
+  const inThirtyDays = toLocalDateKey(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 30));
+  if (schedule.nextDueDate < today) return 'overdue';
+  if (schedule.nextDueDate <= inThirtyDays) return 'due_soon';
   return 'current';
 }
 

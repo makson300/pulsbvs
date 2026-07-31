@@ -85,13 +85,13 @@ export function Topbar({
   );
 }
 
-export function PageHeader({ sectionTitle, sourceName, qualityScore, operational = false }: { sectionTitle: string; sourceName: string; qualityScore: number; operational?: boolean }) {
+export function PageHeader({ sectionTitle, sourceName, qualityScore, analysisSource, operational = false }: { sectionTitle: string; sourceName: string; qualityScore: number; analysisSource: 'demo' | 'file'; operational?: boolean }) {
   return (
     <section className="page-header">
       <div>
         <p className="eyebrow">Центр контроля флота</p>
         <h1>{sectionTitle}</h1>
-        <p className="page-subtitle">{operational ? 'Операционные записи хранятся локально в этом браузере.' : `Загруженный файл: ${sourceName}`}</p>
+        <p className="page-subtitle">{operational ? 'Операционные записи хранятся локально в этом браузере.' : analysisSource === 'demo' ? `Синтетический пример: ${sourceName}` : `Загруженный файл: ${sourceName}`}</p>
       </div>
       <div className="system-status">
         <span />

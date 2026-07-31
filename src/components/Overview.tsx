@@ -7,6 +7,7 @@ import type { FleetReadiness } from '../domain/fleet';
 
 export function Overview({
   analysis,
+  analysisSource,
   barValues,
   primaryAlert,
   openRecommendation,
@@ -19,6 +20,7 @@ export function Overview({
   readiness,
 }: {
   analysis: FlightAnalysis;
+  analysisSource: 'demo' | 'file';
   barValues: number[];
   primaryAlert: FlightAnalysis['alerts'][number] | undefined;
   openRecommendation: () => void;
@@ -34,15 +36,15 @@ export function Overview({
     <>
       <section className="metric-grid">
         <Metric icon={<Plane />} value={String(droneCount)} label="Дронов в парке" hint={`${importCount} загрузок в истории`} tone="blue" />
-        <Metric icon={<BatteryCharging />} value={analysis.summary.batteryEnd !== null ? `${analysis.summary.batteryEnd}%` : '—'} label="Остаток батареи" hint="по последнему загруженному логу" tone="violet" />
+        <Metric icon={<BatteryCharging />} value={analysis.summary.batteryEnd !== null ? `${analysis.summary.batteryEnd}%` : '—'} label="Остаток батареи" hint={analysisSource === 'demo' ? 'по синтетическому примеру' : 'по последнему загруженному логу'} tone="violet" />
         <Metric icon={<AlertTriangle />} value={String(analysis.alerts.length)} label="Предупреждений в файле" hint={`полнота данных: ${analysis.quality.score}%`} tone="amber" />
         <Metric icon={<Gauge />} value={String(manualFlightCount)} label="Записей в журнале" hint="введены вручную" tone="cyan" />
       </section>
 
       <section className="dashboard-grid">
         <FleetHealthCard droneCount={droneCount} importCount={importCount} readiness={readiness} />
-        <RiskCard primaryAlert={primaryAlert} openRecommendation={openRecommendation} />
-        <FlightChart analysis={analysis} barValues={barValues} />
+        <RiskCard primaryAlert={primaryAlert} openRecommendation={openRecommendation} analysisSource={analysisSource} />
+        <FlightChart analysis={analysis} barValues={barValues} analysisSource={analysisSource} />
       </section>
 
       <section className="analysis-grid">
@@ -55,7 +57,7 @@ export function Overview({
             <button onClick={() => loadDemo('degraded')}>Есть ухудшение</button>
             <button onClick={() => loadDemo('critical')}>Высокий риск</button>
           </div>
-          <p>Кнопки подставляют разные примеры файлов, пересчитывают предупреждения и сохраняют поддержанные загрузки в историю.</p>
+          <p>Кнопки показывают синтетические примеры, не связанные с вашим парком. Они не сохраняются в историю, не создают задач и не являются техническим выводом о дроне или батарее.</p>
         </article>
       </section>
       <PilotReadiness />
@@ -147,14 +149,14 @@ function FleetHealthCard({ droneCount, importCount, readiness }: { droneCount: n
   );
 }
 
-function RiskCard({ primaryAlert, openRecommendation }: { primaryAlert: FlightAnalysis['alerts'][number] | undefined; openRecommendation: () => void }) {
+function RiskCard({ primaryAlert, openRecommendation, analysisSource }: { primaryAlert: FlightAnalysis['alerts'][number] | undefined; openRecommendation: () => void; analysisSource: 'demo' | 'file' }) {
   return (
     <article className="panel risk-card">
       <div className="risk-top">
         <div className="risk-icon"><AlertTriangle size={22} /></div>
         <span className={`severity severity--${primaryAlert?.severity ?? 'info'}`}>{severityText[primaryAlert?.severity ?? 'info']}</span>
       </div>
-      <p className="eyebrow">Предупреждение</p>
+      <p className="eyebrow">{analysisSource === 'demo' ? 'Синтетический пример предупреждения' : 'Предупреждение'}</p>
       <h2>{primaryAlert?.title ?? 'Отклонений не обнаружено'}</h2>
       <p>{primaryAlert?.detail ?? 'Данные полёта находятся в обычных пределах.'}</p>
       <button className="risk-action" onClick={openRecommendation}>Открыть рекомендации <ArrowUpRight size={16} /></button>
@@ -162,10 +164,10 @@ function RiskCard({ primaryAlert, openRecommendation }: { primaryAlert: FlightAn
   );
 }
 
-function FlightChart({ analysis, barValues }: { analysis: FlightAnalysis; barValues: number[] }) {
+function FlightChart({ analysis, barValues, analysisSource }: { analysis: FlightAnalysis; barValues: number[]; analysisSource: 'demo' | 'file' }) {
   return (
     <article className="panel flight-panel">
-      <div className="panel-heading"><div><p className="eyebrow">Анализ файла</p><h2>Разряд батареи</h2></div><span className="period-button">{analysis.summary.points} точек</span></div>
+      <div className="panel-heading"><div><p className="eyebrow">{analysisSource === 'demo' ? 'Синтетический пример' : 'Анализ файла'}</p><h2>Разряд батареи</h2></div><span className="period-button">{analysis.summary.points} точек</span></div>
       <div className="chart-summary">
         <div><strong>{analysis.summary.durationMin?.toFixed(1) ?? '—'} мин</strong><span>длительность</span></div>
         <div><strong>{analysis.summary.maxCellDeviation?.toFixed(3) ?? '—'} В</strong><span>макс. разбаланс</span></div>

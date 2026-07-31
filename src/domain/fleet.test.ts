@@ -5,6 +5,7 @@ import {
   createDefaultFleetState,
   createDocumentRecord,
   createIncidentRecord,
+  createMaintenanceSchedule,
   createMaintenanceTask,
   createManualFlightEntry,
   createPendingImport,
@@ -12,6 +13,7 @@ import {
   getOperationalReportSummary,
   getFleetReadiness,
   getDocumentExpiryStatus,
+  getMaintenanceScheduleStatus,
   getManualFlightMinutes,
   isChecklistComplete,
   toLocalDateKey,
@@ -23,9 +25,11 @@ import {
   removeDocumentRecord,
   removeIncidentRecord,
   removeMaintenanceTask,
+  removeMaintenanceSchedule,
   updateDocumentRecord,
   updateIncidentRecord,
   updateMaintenanceTask,
+  updateMaintenanceSchedule,
   updateManualFlightEntry,
   updateAssetPassport,
   upsertImport,
@@ -53,6 +57,7 @@ describe('fleet domain state', () => {
     expect(state.imports).toEqual([]);
     expect(state.pendingImports).toEqual([]);
     expect(state.maintenanceTasks).toEqual([]);
+    expect(state.maintenanceSchedules).toEqual([]);
     expect(state.manualFlights).toEqual([]);
     expect(state.selectedDroneId).toBe(state.drones[0].id);
     expect(state.selectedBatteryId).toBe(state.batteries[0].id);
@@ -147,6 +152,7 @@ describe('fleet domain state', () => {
     const restored = loadFleetState(storage);
 
     expect(restored.maintenanceTasks).toEqual([]);
+    expect(restored.maintenanceSchedules).toEqual([]);
     expect(restored.incidents).toEqual([]);
     expect(restored.documents).toEqual([]);
     expect(restored.manualFlights).toEqual([]);
@@ -194,6 +200,20 @@ describe('fleet domain state', () => {
     expect(removeDocumentRecord({ ...state, documents: [document] }, document.id).documents).toEqual([]);
   });
 
+  it('stores manual calendar maintenance schedules without creating a task', () => {
+    const state = createDefaultFleetState();
+    const now = new Date('2026-07-30T10:00:00Z');
+    const schedule = createMaintenanceSchedule({ assetKind: 'drone', assetId: state.selectedDroneId, title: '  Плановый осмотр  ', nextDueDate: '2026-08-10', intervalDays: 30.8, responsible: '  Иван  ', note: '  Вручную по внутреннему плану  ' }, now);
+    const updated = updateMaintenanceSchedule(schedule, { nextDueDate: '2026-09-10', intervalDays: 0, note: '  Перенесено вручную  ' }, now);
+    const invalidDate = createMaintenanceSchedule({ title: 'Проверка даты', nextDueDate: '2026-02-30' }, now);
+
+    expect(schedule).toMatchObject({ title: 'Плановый осмотр', intervalDays: 30, responsible: 'Иван', note: 'Вручную по внутреннему плану', createdAt: now.toISOString() });
+    expect(updated).toMatchObject({ nextDueDate: '2026-09-10', intervalDays: undefined, note: 'Перенесено вручную', updatedAt: now.toISOString() });
+    expect(invalidDate.nextDueDate).toBeUndefined();
+    expect(removeMaintenanceSchedule({ ...state, maintenanceSchedules: [schedule] }, schedule.id).maintenanceSchedules).toEqual([]);
+    expect(state.maintenanceTasks).toEqual([]);
+  });
+
   it('removes only linked checklist runs and unlinks incidents when a manual flight is removed', () => {
     const state = createDefaultFleetState();
     const now = new Date('2026-07-30T10:00:00Z');
@@ -218,14 +238,18 @@ describe('fleet domain state', () => {
     const answers = { airframe: true, battery: true, airspace: true, mission: true };
     const checklist = createChecklistRun({ flightId: selectedFlight.id, phase: 'preflight', answers }, now)!;
     const task = createMaintenanceTask({ assetKind: 'drone', assetId: state.selectedDroneId, title: 'Осмотр' }, now);
+    const schedule = createMaintenanceSchedule({ assetKind: 'drone', assetId: state.selectedDroneId, title: 'Ежемесячный осмотр' }, now);
     const incident = createIncidentRecord({ assetKind: 'drone', assetId: state.selectedDroneId, title: 'Вмятина', severity: 'warning', occurredOn: '2026-07-30', flightId: selectedFlight.id }, now);
-    const summary = getOperationalReportSummary({ ...state, manualFlights: [selectedFlight, otherFlight], checklistRuns: [checklist], maintenanceTasks: [task], incidents: [incident] }, { from: '2026-07-25', to: '2026-07-31', assetKind: 'drone', assetId: state.selectedDroneId });
+    const summary = getOperationalReportSummary({ ...state, manualFlights: [selectedFlight, otherFlight], checklistRuns: [checklist], maintenanceTasks: [task], maintenanceSchedules: [schedule], incidents: [incident] }, { from: '2026-07-25', to: '2026-07-31', assetKind: 'drone', assetId: state.selectedDroneId });
+    const unfilteredSummary = getOperationalReportSummary({ ...state, maintenanceSchedules: [schedule] });
 
     expect(summary.flightMinutes).toBe(16);
     expect(summary.flights).toEqual([selectedFlight]);
     expect(summary.openTaskCount).toBe(1);
     expect(summary.openIncidentCount).toBe(1);
     expect(summary.incompleteChecklistFlightCount).toBe(1);
+    expect(summary.schedules).toEqual([]);
+    expect(unfilteredSummary.schedules).toEqual([schedule]);
   });
 
   it('calculates readiness only from explicit operational facts', () => {
@@ -261,6 +285,22 @@ describe('fleet domain state', () => {
     expect(getDocumentExpiryStatus(createDocumentRecord({ ...base, expiresOn: '2026-08-10' }, now), now)).toBe('expires_soon');
     expect(getDocumentExpiryStatus(createDocumentRecord({ ...base, expiresOn: '2026-09-10' }, now), now)).toBe('current');
     expect(getDocumentExpiryStatus(createDocumentRecord(base, now), now)).toBe('no_expiry');
+  });
+
+  it('labels manual calendar schedule dates without treating them as readiness facts', () => {
+    const state = createDefaultFleetState();
+    const now = new Date('2026-07-30T10:00:00Z');
+    const base = { title: 'Плановый осмотр' };
+    const overdue = createMaintenanceSchedule({ ...base, nextDueDate: '2026-07-29' }, now);
+    const dueSoon = createMaintenanceSchedule({ ...base, nextDueDate: '2026-08-10' }, now);
+    const current = createMaintenanceSchedule({ ...base, nextDueDate: '2026-09-10' }, now);
+    const noDate = createMaintenanceSchedule(base, now);
+
+    expect(getMaintenanceScheduleStatus(overdue, now)).toBe('overdue');
+    expect(getMaintenanceScheduleStatus(dueSoon, now)).toBe('due_soon');
+    expect(getMaintenanceScheduleStatus(current, now)).toBe('current');
+    expect(getMaintenanceScheduleStatus(noDate, now)).toBe('no_date');
+    expect(getFleetReadiness({ ...state, maintenanceSchedules: [overdue] }, now).status).toBe('ready');
   });
 
   it('uses a local calendar date instead of UTC when setting operational dates', () => {

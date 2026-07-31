@@ -16,6 +16,7 @@ import {
   createDocumentRecord,
   createDroneAsset,
   createIncidentRecord,
+  createMaintenanceSchedule,
   createMaintenanceTask,
   createManualFlightEntry,
   createPendingImport,
@@ -25,12 +26,14 @@ import {
   removeDocumentRecord,
   removeIncidentRecord,
   removeMaintenanceTask,
+  removeMaintenanceSchedule,
   removeManualFlightEntry,
   saveFleetState,
   updateDocumentRecord,
   updateChecklistRun,
   updateIncidentRecord,
   updateMaintenanceTask,
+  updateMaintenanceSchedule,
   updateManualFlightEntry,
   updateAssetPassport,
   upsertImport,
@@ -43,6 +46,7 @@ import {
   type FileOriginNote,
   type IncidentRecord,
   type MaintenanceTask,
+  type MaintenanceSchedule,
   type ManualFlightEntry,
   type SavedTelemetryImport,
 } from './domain/fleet';
@@ -55,6 +59,7 @@ const defaultUser: UserProfile = {
 };
 
 const MAX_CLIENT_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+type AnalysisSource = 'demo' | 'file';
 
 function readLocalItem(key: string) {
   try {
@@ -93,6 +98,7 @@ function App() {
   const [analysis, setAnalysis] = useState<FlightAnalysis>(() =>
     fleetState.imports[0]?.analysis ?? analyzeTelemetry(parseTelemetryCsv(demoLogs.degraded.label, demoLogs.degraded.content)),
   );
+  const [analysisSource, setAnalysisSource] = useState<AnalysisSource>(() => fleetState.imports[0] ? 'file' : 'demo');
   const fileInput = useRef<HTMLInputElement>(null);
 
   const primaryAlert = analysis.battery.alerts[0];
@@ -117,19 +123,22 @@ function App() {
     setFleetState((state) => ({ ...state, selectedDroneId: droneId, selectedBatteryId: batteryId }));
   }
 
-  function persistAnalysis(nextAnalysis: FlightAnalysis, sourceName: string, targetSection: Section, originNote?: FileOriginNote) {
+  function showAnalysis(nextAnalysis: FlightAnalysis, sourceName: string, targetSection: Section, source: AnalysisSource, originNote?: FileOriginNote) {
     setUploadedName(sourceName);
     setAnalysis(nextAnalysis);
-    setFleetState((state) => {
-      const saved = createSavedImport(nextAnalysis, state.selectedDroneId, state.selectedBatteryId, new Date(), originNote);
-      const pending = createPendingImport(nextAnalysis, state.selectedDroneId, state.selectedBatteryId, new Date(), originNote);
-      if (pending) return upsertPendingImport(state, pending);
-      return saved ? upsertImport(state, saved) : state;
-    });
+    setAnalysisSource(source);
+    if (source === 'file') {
+      setFleetState((state) => {
+        const saved = createSavedImport(nextAnalysis, state.selectedDroneId, state.selectedBatteryId, new Date(), originNote);
+        const pending = createPendingImport(nextAnalysis, state.selectedDroneId, state.selectedBatteryId, new Date(), originNote);
+        if (pending) return upsertPendingImport(state, pending);
+        return saved ? upsertImport(state, saved) : state;
+      });
+    }
     setSection(targetSection);
     setView('dashboard');
     setModal(null);
-    if (originNote) setFileOriginNote({});
+    if (source === 'file' && originNote) setFileOriginNote({});
   }
 
   async function chooseFile(file?: File) {
@@ -141,7 +150,7 @@ function App() {
     }
     try {
       const content = isUnsupportedTelemetryFile(file.name) ? '' : await file.text();
-      persistAnalysis(analyzeTelemetry(parseTelemetryFile(file.name, content)), file.name, 'flights', fileOriginNote);
+      showAnalysis(analyzeTelemetry(parseTelemetryFile(file.name, content)), file.name, 'flights', 'file', fileOriginNote);
     } catch {
       setUploadError('Не удалось прочитать файл в браузере. Проверьте, что файл доступен, и попробуйте загрузить его снова.');
     }
@@ -149,12 +158,13 @@ function App() {
 
   function loadDemo(key: keyof typeof demoLogs) {
     const demo = demoLogs[key];
-    persistAnalysis(analyzeTelemetry(parseTelemetryCsv(demo.label, demo.content)), demo.label, 'overview');
+    showAnalysis(analyzeTelemetry(parseTelemetryCsv(demo.label, demo.content)), demo.label, 'overview', 'demo');
   }
 
   function openSavedImport(item: SavedTelemetryImport) {
     setUploadedName(item.sourceName);
     setAnalysis(item.analysis);
+    setAnalysisSource('file');
     setFleetState((state) => ({ ...state, selectedDroneId: item.droneId, selectedBatteryId: item.batteryId }));
     setSection('flights');
   }
@@ -191,6 +201,14 @@ function App() {
 
   function updateMaintenance(id: string, update: Partial<Omit<MaintenanceTask, 'id' | 'createdAt' | 'completedAt'>>) {
     setFleetState((state) => ({ ...state, maintenanceTasks: state.maintenanceTasks.map((item) => item.id === id ? updateMaintenanceTask(item, update) : item) }));
+  }
+
+  function addMaintenanceSchedule(input: Omit<MaintenanceSchedule, 'id' | 'createdAt' | 'updatedAt'>) {
+    setFleetState((state) => ({ ...state, maintenanceSchedules: [createMaintenanceSchedule(input), ...state.maintenanceSchedules] }));
+  }
+
+  function updateSchedule(id: string, update: Partial<Omit<MaintenanceSchedule, 'id' | 'createdAt' | 'updatedAt'>>) {
+    setFleetState((state) => ({ ...state, maintenanceSchedules: state.maintenanceSchedules.map((item) => item.id === id ? updateMaintenanceSchedule(item, update) : item) }));
   }
 
   function addIncident(input: Omit<IncidentRecord, 'id' | 'createdAt' | 'resolvedAt' | 'status'>) {
@@ -286,11 +304,12 @@ function App() {
           onUpload={() => setModal('upload')}
         />
 
-        <PageHeader sectionTitle={sectionTitle} sourceName={uploadedName ?? analysis.parsed.sourceName} qualityScore={analysis.quality.score} operational={section === 'fleet' || section === 'batteries' || section === 'maintenance' || section === 'journal' || section === 'reports'} />
+        <PageHeader sectionTitle={sectionTitle} sourceName={uploadedName ?? analysis.parsed.sourceName} qualityScore={analysis.quality.score} analysisSource={analysisSource} operational={section === 'fleet' || section === 'batteries' || section === 'maintenance' || section === 'journal' || section === 'reports'} />
 
         {section === 'overview' && (
           <Overview
             analysis={analysis}
+            analysisSource={analysisSource}
             barValues={barValues}
             primaryAlert={primaryAlert}
             openRecommendation={() => setModal('recommendation')}
@@ -308,6 +327,7 @@ function App() {
         {section === 'flights' && (
           <FlightsView
             analysis={analysis}
+            analysisSource={analysisSource}
             imports={fleetState.imports}
             pendingImports={fleetState.pendingImports}
             drones={fleetState.drones}
@@ -316,7 +336,7 @@ function App() {
           />
         )}
         {section === 'journal' && <JournalView drones={fleetState.drones} batteries={fleetState.batteries} flights={fleetState.manualFlights} checklistRuns={fleetState.checklistRuns} incidents={fleetState.incidents} onAddFlight={addManualFlight} onUpdateFlight={updateManualFlight} onRemoveFlight={(id) => setFleetState((state) => removeManualFlightEntry(state, id))} onAddChecklist={addChecklist} onUpdateChecklist={updateChecklist} />}
-        {section === 'maintenance' && <MaintenanceView drones={fleetState.drones} batteries={fleetState.batteries} flights={fleetState.manualFlights} tasks={fleetState.maintenanceTasks} incidents={fleetState.incidents} documents={fleetState.documents} readiness={readiness} onAddTask={addMaintenanceTask} onUpdateTask={updateMaintenance} onRemoveTask={(id) => setFleetState((state) => removeMaintenanceTask(state, id))} onAddIncident={addIncident} onUpdateIncident={updateIncident} onRemoveIncident={(id) => setFleetState((state) => removeIncidentRecord(state, id))} onAddDocument={addDocument} onUpdateDocument={updateDocument} onRemoveDocument={(id) => setFleetState((state) => removeDocumentRecord(state, id))} />}
+        {section === 'maintenance' && <MaintenanceView drones={fleetState.drones} batteries={fleetState.batteries} flights={fleetState.manualFlights} tasks={fleetState.maintenanceTasks} schedules={fleetState.maintenanceSchedules} incidents={fleetState.incidents} documents={fleetState.documents} readiness={readiness} onAddTask={addMaintenanceTask} onUpdateTask={updateMaintenance} onRemoveTask={(id) => setFleetState((state) => removeMaintenanceTask(state, id))} onAddSchedule={addMaintenanceSchedule} onUpdateSchedule={updateSchedule} onRemoveSchedule={(id) => setFleetState((state) => removeMaintenanceSchedule(state, id))} onAddIncident={addIncident} onUpdateIncident={updateIncident} onRemoveIncident={(id) => setFleetState((state) => removeIncidentRecord(state, id))} onAddDocument={addDocument} onUpdateDocument={updateDocument} onRemoveDocument={(id) => setFleetState((state) => removeDocumentRecord(state, id))} />}
         {section === 'reports' && <ReportsView drones={fleetState.drones} batteries={fleetState.batteries} fleetState={fleetState} />}
       </main>
 

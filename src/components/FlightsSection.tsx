@@ -4,10 +4,11 @@ import { capabilityText } from '../appData';
 import type { BatteryAsset, DroneAsset, FileOriginNote, PendingTelemetryImport, SavedTelemetryImport } from '../domain/fleet';
 import { QualityPanel } from './CommonCards';
 
-export function FlightsView({ analysis, imports, pendingImports, drones, batteries, onOpenImport }: { analysis: FlightAnalysis; imports: SavedTelemetryImport[]; pendingImports: PendingTelemetryImport[]; drones: DroneAsset[]; batteries: BatteryAsset[]; onOpenImport: (item: SavedTelemetryImport) => void }) {
+export function FlightsView({ analysis, analysisSource, imports, pendingImports, drones, batteries, onOpenImport }: { analysis: FlightAnalysis; analysisSource: 'demo' | 'file'; imports: SavedTelemetryImport[]; pendingImports: PendingTelemetryImport[]; drones: DroneAsset[]; batteries: BatteryAsset[]; onOpenImport: (item: SavedTelemetryImport) => void }) {
   return (
     <>
-      <section className="analysis-grid"><QualityPanel analysis={analysis} /><ImportProfile analysis={analysis} /></section>
+      {analysisSource === 'demo' && <DemoAnalysisNotice />}
+      <section className="analysis-grid"><QualityPanel analysis={analysis} /><ImportProfile analysis={analysis} analysisSource={analysisSource} /></section>
       <RecognizedData analysis={analysis} />
       <ImportHistory imports={imports} drones={drones} batteries={batteries} onOpenImport={onOpenImport} />
       <PendingImportQueue pendingImports={pendingImports} drones={drones} batteries={batteries} />
@@ -57,7 +58,7 @@ function ImportHistory({ imports, drones, batteries, onOpenImport }: { imports: 
         <span className="status-pill status-pill--good">{imports.length} записей</span>
       </div>
       {imports.length === 0 ? (
-        <p className="empty-state">Загрузите CSV/TXT/KML или запустите демо-пример — поддержанная проверка сохранится здесь с выбранным дроном и батареей.</p>
+        <p className="empty-state">Загрузите CSV/TXT/KML: поддержанная проверка сохранится здесь с выбранным дроном и батареей. Демо-примеры в историю не попадают.</p>
       ) : imports.map((item) => {
         const drone = drones.find((entry) => entry.id === item.droneId);
         const battery = batteries.find((entry) => entry.id === item.batteryId);
@@ -81,14 +82,18 @@ function OriginNote({ note }: { note?: FileOriginNote }) {
   return parts.length ? <small className="origin-note">{parts.join(' · ')}</small> : null;
 }
 
-function ImportProfile({ analysis }: { analysis: FlightAnalysis }) {
+function DemoAnalysisNotice() {
+  return <section className="demo-analysis-notice" role="status" data-testid="demo-analysis-notice"><CircleHelp size={18} /><div><strong>Открыт синтетический пример</strong><span>Он не связан с парком, не сохранён в истории и не является техническим выводом, задачей обслуживания или результатом проверки реального журнала.</span></div></section>;
+}
+
+function ImportProfile({ analysis, analysisSource }: { analysis: FlightAnalysis; analysisSource: 'demo' | 'file' }) {
   const profile = analysis.importProfile;
   const sourceLabel = analysis.parsed.sourceKind === 'unsupported' ? 'Формат на проверке' : analysis.parsed.sourceKind.toUpperCase();
   const tone = profile.capability === 'battery_extended' ? 'good' : profile.capability === 'battery_basic' ? 'warning' : 'critical';
 
   return (
     <article className={`panel import-card import-card--${profile.capability}`}>
-      <div className="panel-heading"><div><p className="eyebrow">Карточка загрузки</p><h2>{profile.title}</h2></div><span className={`status-pill status-pill--${tone}`}>{sourceLabel}</span></div>
+      <div className="panel-heading"><div><p className="eyebrow">{analysisSource === 'demo' ? 'Карточка синтетического примера' : 'Карточка загрузки'}</p><h2>{profile.title}</h2></div><span className={`status-pill status-pill--${tone}`}>{analysisSource === 'demo' ? 'ДЕМО' : sourceLabel}</span></div>
       <p>{profile.verdict}</p>
       <div className="entity-stats">
         <span>Файл <b>{analysis.parsed.sourceName}</b></span>
