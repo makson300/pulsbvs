@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { demoLogs } from './analytics/demoLogs';
 import { analyzeTelemetry, isUnsupportedTelemetryFile, parseTelemetryCsv, parseTelemetryFile, type FlightAnalysis } from './analytics/telemetry';
-import { navItems } from './appData';
+import { downloadSample, navItems } from './appData';
 import type { ModalState, Section, UserProfile, View } from './appTypes';
 import { BatteriesView, FleetView, MaintenanceView } from './components/OperationsSections';
 import { FlightsView } from './components/FlightsSection';
@@ -15,6 +15,7 @@ import {
   createChecklistRun,
   createDocumentRecord,
   createDroneAsset,
+  createFleetBackup,
   createIncidentRecord,
   createMaintenanceSchedule,
   createMaintenanceTask,
@@ -27,6 +28,7 @@ import {
   removeIncidentRecord,
   removeMaintenanceTask,
   removeMaintenanceSchedule,
+  restoreFleetBackup as restoreFleetStateBackup,
   removeManualFlightEntry,
   saveFleetState,
   updateDocumentRecord,
@@ -106,6 +108,7 @@ function App() {
   const [uploadedName, setUploadedName] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [fileOriginNote, setFileOriginNote] = useState<FileOriginNote>({});
+  const [backupMessage, setBackupMessage] = useState<string | null>(null);
   const [fleetState, setFleetState] = useState<FleetState>(() => loadFleetState());
   const [storageAvailable, setStorageAvailable] = useState(isLocalStorageAvailable);
   const [analysis, setAnalysis] = useState<FlightAnalysis>(() =>
@@ -113,6 +116,7 @@ function App() {
   );
   const [analysisSource, setAnalysisSource] = useState<AnalysisSource>(() => fleetState.imports[0] ? 'file' : 'demo');
   const fileInput = useRef<HTMLInputElement>(null);
+  const backupInput = useRef<HTMLInputElement>(null);
 
   const primaryAlert = analysis.battery.alerts[0];
   const barValues = useMemo(
@@ -180,6 +184,43 @@ function App() {
     setAnalysisSource('file');
     setFleetState((state) => ({ ...state, selectedDroneId: item.droneId, selectedBatteryId: item.batteryId }));
     setSection('flights');
+  }
+
+  function downloadFleetBackup() {
+    const date = new Date().toISOString().slice(0, 10);
+    downloadSample(`puls-bvs-backup-${date}.json`, `${JSON.stringify(createFleetBackup(fleetState), null, 2)}\n`, 'application/json;charset=utf-8');
+    setBackupMessage('Резервная копия сохранена в загрузках браузера. Она содержит только локальные записи демо, без оригиналов файлов журналов.');
+  }
+
+  async function restoreFleetBackup(file?: File) {
+    if (!file) return;
+    setBackupMessage(null);
+    if (file.size > MAX_CLIENT_FILE_SIZE_BYTES) {
+      setBackupMessage('Файл резервной копии больше 10 МБ. Выберите экспорт из «Пульс БВС» меньшего размера.');
+      return;
+    }
+    try {
+      const restored = restoreFleetStateBackup(await file.text());
+      if (!restored) {
+        setBackupMessage('Не удалось распознать резервную копию. Нужен JSON-файл, выгруженный из этой версии «Пульс БВС».');
+        return;
+      }
+      setFleetState(restored);
+      const restoredAnalysis = restored.imports[0]?.analysis;
+      if (restoredAnalysis) {
+        setAnalysis(restoredAnalysis);
+        setAnalysisSource('file');
+        setUploadedName(restored.imports[0].sourceName);
+      } else {
+        const demo = demoLogs.degraded;
+        setAnalysis(analyzeTelemetry(parseTelemetryCsv(demo.label, demo.content)));
+        setAnalysisSource('demo');
+        setUploadedName(null);
+      }
+      setBackupMessage('Локальные записи демо восстановлены. Проверьте данные перед дальнейшей работой.');
+    } catch {
+      setBackupMessage('Не удалось прочитать файл резервной копии в браузере.');
+    }
   }
 
   function addDrone() {
@@ -265,6 +306,7 @@ function App() {
     modal: modal as Exclude<ModalState, null>,
     setModal,
     fileInput,
+    backupInput,
     chooseFile,
     uploadedName,
     uploadError,
@@ -277,6 +319,9 @@ function App() {
     selectAssets,
     fileOriginNote,
     setFileOriginNote,
+    backupMessage,
+    onDownloadBackup: downloadFleetBackup,
+    onRestoreBackup: restoreFleetBackup,
   };
 
   if (view === 'landing') {

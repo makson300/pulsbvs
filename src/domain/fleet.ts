@@ -208,6 +208,15 @@ export interface FleetState {
 }
 
 export const FLEET_STORAGE_KEY = 'puls-bvs-fleet-state';
+export const FLEET_BACKUP_FORMAT = 'puls-bvs-fleet-backup';
+export const FLEET_BACKUP_VERSION = 1;
+
+export interface FleetBackup {
+  format: typeof FLEET_BACKUP_FORMAT;
+  version: typeof FLEET_BACKUP_VERSION;
+  exportedAt: string;
+  fleetState: FleetState;
+}
 
 export const defaultDrones: DroneAsset[] = [
   { id: 'drone-avata-2', name: 'Avata 2', model: 'DJI Avata 2', status: 'Журнал не добавлен', health: null, flightHours: null, tone: 'warning' },
@@ -236,28 +245,32 @@ export function createDefaultFleetState(): FleetState {
   };
 }
 
+function normalizeFleetState(parsed: Partial<FleetState>): FleetState {
+  const fallback = createDefaultFleetState();
+  const drones = Array.isArray(parsed.drones) && parsed.drones.length ? parsed.drones : fallback.drones;
+  const batteries = Array.isArray(parsed.batteries) && parsed.batteries.length ? parsed.batteries : fallback.batteries;
+  return {
+    drones,
+    batteries,
+    imports: Array.isArray(parsed.imports) ? parsed.imports : [],
+    pendingImports: Array.isArray(parsed.pendingImports) ? parsed.pendingImports : [],
+    maintenanceTasks: Array.isArray(parsed.maintenanceTasks) ? parsed.maintenanceTasks : [],
+    maintenanceSchedules: Array.isArray(parsed.maintenanceSchedules) ? parsed.maintenanceSchedules : [],
+    incidents: Array.isArray(parsed.incidents) ? parsed.incidents : [],
+    documents: Array.isArray(parsed.documents) ? parsed.documents : [],
+    manualFlights: Array.isArray(parsed.manualFlights) ? parsed.manualFlights : [],
+    checklistRuns: Array.isArray(parsed.checklistRuns) ? parsed.checklistRuns : [],
+    selectedDroneId: parsed.selectedDroneId && drones.some((drone) => drone.id === parsed.selectedDroneId) ? parsed.selectedDroneId : drones[0].id,
+    selectedBatteryId: parsed.selectedBatteryId && batteries.some((battery) => battery.id === parsed.selectedBatteryId) ? parsed.selectedBatteryId : batteries[0].id,
+  };
+}
+
 export function loadFleetState(storage?: Pick<Storage, 'getItem'>): FleetState {
   const fallback = createDefaultFleetState();
   try {
     const raw = (storage ?? localStorage).getItem(FLEET_STORAGE_KEY);
     if (!raw) return fallback;
-    const parsed = JSON.parse(raw) as Partial<FleetState>;
-    const drones = Array.isArray(parsed.drones) && parsed.drones.length ? parsed.drones : fallback.drones;
-    const batteries = Array.isArray(parsed.batteries) && parsed.batteries.length ? parsed.batteries : fallback.batteries;
-    return {
-      drones,
-      batteries,
-      imports: Array.isArray(parsed.imports) ? parsed.imports : [],
-      pendingImports: Array.isArray(parsed.pendingImports) ? parsed.pendingImports : [],
-      maintenanceTasks: Array.isArray(parsed.maintenanceTasks) ? parsed.maintenanceTasks : [],
-      maintenanceSchedules: Array.isArray(parsed.maintenanceSchedules) ? parsed.maintenanceSchedules : [],
-      incidents: Array.isArray(parsed.incidents) ? parsed.incidents : [],
-      documents: Array.isArray(parsed.documents) ? parsed.documents : [],
-      manualFlights: Array.isArray(parsed.manualFlights) ? parsed.manualFlights : [],
-      checklistRuns: Array.isArray(parsed.checklistRuns) ? parsed.checklistRuns : [],
-      selectedDroneId: parsed.selectedDroneId && drones.some((drone) => drone.id === parsed.selectedDroneId) ? parsed.selectedDroneId : drones[0].id,
-      selectedBatteryId: parsed.selectedBatteryId && batteries.some((battery) => battery.id === parsed.selectedBatteryId) ? parsed.selectedBatteryId : batteries[0].id,
-    };
+    return normalizeFleetState(JSON.parse(raw) as Partial<FleetState>);
   } catch {
     return fallback;
   }
@@ -269,6 +282,25 @@ export function saveFleetState(state: FleetState, storage?: Pick<Storage, 'setIt
     return true;
   } catch {
     return false;
+  }
+}
+
+export function createFleetBackup(state: FleetState, now = new Date()): FleetBackup {
+  return {
+    format: FLEET_BACKUP_FORMAT,
+    version: FLEET_BACKUP_VERSION,
+    exportedAt: now.toISOString(),
+    fleetState: state,
+  };
+}
+
+export function restoreFleetBackup(content: string): FleetState | null {
+  try {
+    const backup = JSON.parse(content) as Partial<FleetBackup>;
+    if (backup.format !== FLEET_BACKUP_FORMAT || backup.version !== FLEET_BACKUP_VERSION || !backup.fleetState || typeof backup.fleetState !== 'object') return null;
+    return normalizeFleetState(backup.fleetState);
+  } catch {
+    return null;
   }
 }
 

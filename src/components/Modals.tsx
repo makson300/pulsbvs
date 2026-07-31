@@ -1,4 +1,4 @@
-import { AlertTriangle, Bell, CheckCircle2, CircleHelp, CloudUpload, Settings, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, Bell, CheckCircle2, CircleHelp, CloudUpload, FileDown, FileUp, Settings, ShieldCheck } from 'lucide-react';
 import type { ReactNode, RefObject } from 'react';
 import { demoLogs } from '../analytics/demoLogs';
 import type { FlightAnalysis } from '../analytics/telemetry';
@@ -10,6 +10,7 @@ export type ModalProps = {
   modal: Exclude<ModalState, null>;
   setModal: (modal: ModalState) => void;
   fileInput: RefObject<HTMLInputElement | null>;
+  backupInput: RefObject<HTMLInputElement | null>;
   chooseFile: (file?: File) => void;
   uploadedName: string | null;
   uploadError: string | null;
@@ -22,9 +23,12 @@ export type ModalProps = {
   selectAssets: (droneId: string, batteryId: string) => void;
   fileOriginNote: FileOriginNote;
   setFileOriginNote: (note: FileOriginNote) => void;
+  backupMessage: string | null;
+  onDownloadBackup: () => void;
+  onRestoreBackup: (file?: File) => void;
 };
 
-export function Modal({ modal, setModal, fileInput, chooseFile, uploadedName, uploadError, primaryAlert, loadDemo, loginDemo, user, setUser, fleetState, selectAssets, fileOriginNote, setFileOriginNote }: ModalProps) {
+export function Modal({ modal, setModal, fileInput, backupInput, chooseFile, uploadedName, uploadError, primaryAlert, loadDemo, loginDemo, user, setUser, fleetState, selectAssets, fileOriginNote, setFileOriginNote, backupMessage, onDownloadBackup, onRestoreBackup }: ModalProps) {
   return (
     <div className="modal-backdrop" data-testid="modal-backdrop" onMouseDown={() => setModal(null)}>
       <section className="upload-modal" data-testid={`modal-${modal}`} onMouseDown={(event) => event.stopPropagation()}>
@@ -34,7 +38,7 @@ export function Modal({ modal, setModal, fileInput, chooseFile, uploadedName, up
         {modal === 'lead' && <IconTitle icon={<Bell />} title="Заявка принята в демо-режиме" eyebrow="Пилот" text="В рабочей версии здесь будет форма заявки и уведомление ответственному специалисту." />}
         {modal === 'recommendation' && <IconTitle icon={<AlertTriangle />} title={primaryAlert?.title ?? 'Отклонений нет'} eyebrow="Рекомендация" text={primaryAlert?.recommendation ?? 'Продолжайте копить историю полётов и батарей.'} />}
         {modal === 'notifications' && <IconTitle icon={<Bell />} title="Уведомления" eyebrow="Пульс БВС" text="Здесь появятся письма и другие уведомления для ответственных людей по важным событиям." />}
-        {modal === 'settings' && <IconTitle icon={<Settings />} title="Настройки" eyebrow="Пульс БВС" text="Следующий этап: права доступа, правила предупреждений, данные организации и объём проверок по тарифу." />}
+        {modal === 'settings' && <SettingsModal backupInput={backupInput} backupMessage={backupMessage} onDownloadBackup={onDownloadBackup} onRestoreBackup={onRestoreBackup} />}
         {modal === 'help' && <HelpModal />}
       </section>
     </div>
@@ -46,12 +50,12 @@ function HelpModal() {
     { title: '1. Сохраните исходный файл у себя', text: 'Не меняйте оригинал журнала и храните его в отдельной закрытой папке вместе с заметкой, откуда он взят.' },
     { title: '2. Подготовьте копию для загрузки', text: 'Если в файле есть лишние чувствительные данные, загрузите рабочую копию без них. Имя файла, тип файла и способ получения запишите в карточке лога.' },
     { title: '3. Выберите дрон и батарею', text: 'Даже если батарея неизвестна, дайте ей понятное временное название: так потом будет ясно, к чему относится файл.' },
-    { title: '4. Загрузите файл и проверьте результат', text: 'CSV/TXT/KML дают ограниченную проверку. DAT/ZIP/JSON только сохраняются на разбор и пока не дают выводов.' },
+    { title: '4. Загрузите файл и проверьте результат', text: 'CSV/TXT/KML дают ограниченную проверку. Для DAT/ZIP/JSON демо создаёт только запись очереди с метаданными и пока не даёт выводов.' },
   ];
   const fileTypes = [
     { label: 'CSV/TXT', text: 'таблица с данными полёта, если в ней есть понятные поля' },
     { label: 'KML', text: 'маршрут и координаты, но не здоровье батареи' },
-    { label: 'DAT/ZIP/JSON', text: 'только сохранение на отдельную проверку' },
+    { label: 'DAT/ZIP/JSON', text: 'только запись очереди с метаданными для отдельной проверки' },
   ];
 
   return (
@@ -73,6 +77,25 @@ function HelpModal() {
         <AlertTriangle size={16} />
         <span>Новые правила чтения и оценки добавляются только после изучения реального файла без лишних чувствительных данных и с заполненной карточкой лога.</span>
       </div>
+    </>
+  );
+}
+
+function SettingsModal({ backupInput, backupMessage, onDownloadBackup, onRestoreBackup }: Pick<ModalProps, 'backupInput' | 'backupMessage' | 'onDownloadBackup' | 'onRestoreBackup'>) {
+  return (
+    <>
+      <IconTitle icon={<Settings />} title="Настройки демо" eyebrow="Пульс БВС" text="Данные этого прототипа живут только в браузере. Сделайте резервную копию перед очисткой браузера или сменой устройства." />
+      <section className="backup-panel" data-testid="backup-panel">
+        <strong>Резервная копия локальных записей</strong>
+        <p>Экспорт включает парк, ручной журнал, задачи, события, документы, расписания и записи проверок. Оригиналы файлов журналов и аккаунт в него не входят.</p>
+        <div className="backup-actions">
+          <button className="upload-button" data-testid="download-backup" onClick={onDownloadBackup}><FileDown size={16} />Скачать копию</button>
+          <button className="text-action" data-testid="choose-backup" onClick={() => backupInput.current?.click()}><FileUp size={16} />Восстановить копию</button>
+        </div>
+        <input ref={backupInput} className="hidden-input" data-testid="backup-input" type="file" accept="application/json,.json" onChange={(event) => onRestoreBackup(event.target.files?.[0])} />
+        <small>Восстановление заменит текущие локальные записи этого демо в браузере. Файл должен быть выгружен из «Пульс БВС» той же версии.</small>
+        {backupMessage && <p className="backup-message" role="status">{backupMessage}</p>}
+      </section>
     </>
   );
 }

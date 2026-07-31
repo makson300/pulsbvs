@@ -4,6 +4,7 @@ import {
   createChecklistRun,
   createDefaultFleetState,
   createDocumentRecord,
+  createFleetBackup,
   createIncidentRecord,
   createMaintenanceSchedule,
   createMaintenanceTask,
@@ -26,6 +27,7 @@ import {
   removeIncidentRecord,
   removeMaintenanceTask,
   removeMaintenanceSchedule,
+  restoreFleetBackup,
   updateDocumentRecord,
   updateIncidentRecord,
   updateMaintenanceTask,
@@ -73,6 +75,23 @@ describe('fleet domain state', () => {
     const storage = { setItem: () => { throw new Error('storage unavailable'); } };
 
     expect(saveFleetState(createDefaultFleetState(), storage)).toBe(false);
+  });
+
+  it('exports and restores a versioned local demo backup', () => {
+    const state = createDefaultFleetState();
+    state.manualFlights = [createManualFlightEntry({ flightDate: '2026-07-30', droneId: state.selectedDroneId, pilot: 'Иван', purpose: 'Осмотр', durationMin: 18 })];
+    const backup = createFleetBackup(state, new Date('2026-07-30T10:00:00Z'));
+    const restored = restoreFleetBackup(JSON.stringify(backup));
+
+    expect(backup.exportedAt).toBe('2026-07-30T10:00:00.000Z');
+    expect(restored?.manualFlights).toHaveLength(1);
+    expect(restored?.manualFlights[0].purpose).toBe('Осмотр');
+  });
+
+  it('refuses foreign, malformed, or unsupported-version backup files', () => {
+    expect(restoreFleetBackup('{not json')).toBeNull();
+    expect(restoreFleetBackup(JSON.stringify({ format: 'other', version: 1, fleetState: {} }))).toBeNull();
+    expect(restoreFleetBackup(JSON.stringify({ format: 'puls-bvs-fleet-backup', version: 2, fleetState: {} }))).toBeNull();
   });
 
   it('persists and restores supported telemetry imports with asset links', () => {

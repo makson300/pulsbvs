@@ -25,6 +25,22 @@ test.describe('разделение синтетических и пользов
     await expect(page.getByTestId('storage-unavailable-warning')).toContainText('исчезнут после перезагрузки');
   });
 
+  test('настройки дают скачать и восстановить только резервную копию демо', async ({ page }) => {
+    await openCleanDashboard(page);
+    await page.getByTestId('open-settings').click();
+    const backup = page.getByTestId('backup-panel');
+
+    await expect(backup).toContainText('Оригиналы файлов журналов и аккаунт в него не входят');
+    await expect(backup.getByTestId('download-backup')).toBeVisible();
+    await backup.getByTestId('backup-input').setInputFiles({
+      name: 'puls-bvs-backup.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify({ format: 'puls-bvs-fleet-backup', version: 1, exportedAt: '2026-07-30T10:00:00.000Z', fleetState: { drones: [], batteries: [], imports: [], pendingImports: [], maintenanceTasks: [], maintenanceSchedules: [], incidents: [], documents: [], manualFlights: [], checklistRuns: [] } })),
+    });
+
+    await expect(backup).toContainText('Локальные записи демо восстановлены');
+  });
+
   test('синтетический пример не создаёт запись истории', async ({ page }) => {
     await openCleanDashboard(page);
     await page.getByTestId('open-upload').click();
