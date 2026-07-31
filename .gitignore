@@ -4,6 +4,10 @@ node_modules/
 # production build
 dist/
 
+# browser test artifacts
+test-results/
+playwright-report/
+
 # local env files
 .env
 .env.*
